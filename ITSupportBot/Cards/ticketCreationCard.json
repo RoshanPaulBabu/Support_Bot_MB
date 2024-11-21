@@ -1,0 +1,52 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.0",
+    "type": "AdaptiveCard",
+    "body": [
+        {
+            "type": "TextBlock",
+            "size": "Large",
+            "weight": "Bolder",
+            "text": "Ticket Details"
+        },
+        {
+            "type": "FactSet",
+            "facts": [
+                {
+                    "title": "Ticket ID:",
+                    "value": "${ticketId}"
+                },
+                {
+                    "title": "Title:",
+                    "value": "${title}"
+                },
+                {
+                    "title": "Description:",
+                    "value": "${description}"
+                },
+                {
+                    "title": "Created At:",
+                    "value": "${createdAt}"
+                }
+            ],
+            "separator": true,
+            "spacing": "Small"
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Edit",
+            "data": {
+                "action": "edit"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Confirm",
+            "data": {
+                "action": "confirm"
+            }
+        }
+    ]
+}

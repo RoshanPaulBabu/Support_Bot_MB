@@ -1,0 +1,52 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.0",
+    "body": [
+        {
+            "type": "Image",
+            "url": "https://ninjateam.org/wp-content/uploads/2016/12/chat_bot-01.jpg",
+            "size": "stretch",
+            "altText": "IT Support Bot"
+        },
+        {
+            "type": "TextBlock",
+            "spacing": "medium",
+            "size": "default",
+            "weight": "bolder",
+            "text": "Welcome to IT Support Bot!",
+            "wrap": true,
+            "maxLines": 0
+        },
+        {
+            "type": "TextBlock",
+            "size": "default",
+            "isSubtle": true,
+            "text": "I'm here to assist you with troubleshooting, scheduling support, and more.",
+            "wrap": true,
+            "maxLines": 0
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.OpenUrl",
+            "title": "Troubleshoot a Problem",
+            "url": "https://support.example.com/troubleshoot"
+        },
+        {
+            "type": "Action.OpenUrl",
+            "title": "Schedule a Support Call",
+            "url": "https://support.example.com/schedule"
+        },
+        {
+            "type": "Action.OpenUrl",
+            "title": "Access IT Resources",
+            "url": "https://support.example.com/resources"
+        },
+        {
+            "type": "Action.OpenUrl",
+            "title": "Talk to an Agent",
+            "url": "https://support.example.com/agent"
+        }
+    ]
+}

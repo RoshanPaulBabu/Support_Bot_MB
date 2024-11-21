@@ -1,0 +1,32 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.0",
+    "type": "AdaptiveCard",
+    "body": [
+        {
+            "type": "Input.Text",
+            "id": "title",
+            "placeholder": "Enter the ticket title",
+            "value": "${title}"
+        },
+        {
+            "type": "Input.Text",
+            "id": "description",
+            "placeholder": "Enter the ticket description",
+            "value": "${description}",
+            "isMultiline": true
+        },
+        {
+            "type": "Input.Text",
+            "id": "ticketId",
+            "value": "${ticketId}",
+            "isVisible": false
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Save"
+        }
+    ]
+}

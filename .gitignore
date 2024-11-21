@@ -1,0 +1,37 @@
+# Compiled and Binary Files
+bin/
+obj/
+
+# User-Specific and Visual Studio Files
+.vs/
+*.user
+*.suo
+
+# Build and Release Files
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+
+# Publish and Package Files
+/publish/
+/packages/
+
+# Temporary Files
+*.tmp
+*.log
+*.pid
+
+# IDE and Editor Files
+.vscode/
+*.csproj.user
+
+# Bot Framework Specific Files
+.bot/
+.azure/
+
+# Sensitive Configuration Files
+appsettings.Development.json
+secrets.json
+appsettings.json
