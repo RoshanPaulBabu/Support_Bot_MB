@@ -9,35 +9,55 @@ using ITSupportBot.Services;
 namespace ITSupportBot.Dialogs
 {
     public class QnAHandlingDialog : ComponentDialog
-    { 
-
+    {
         private readonly AzureOpenAIService _AzureOpenAIService;
-        public QnAHandlingDialog(AzureOpenAIService AzureOpenAIService) : base(nameof(QnAHandlingDialog))
+        private readonly AzureSearchService _searchService;
+        public QnAHandlingDialog(AzureSearchService searchService, AzureOpenAIService AzureOpenAIService) : base(nameof(QnAHandlingDialog))
         {
 
-            _AzureOpenAIService = AzureOpenAIService ?? throw new ArgumentNullException(nameof(AzureOpenAIService));
+            _searchService = searchService;
+            _AzureOpenAIService = AzureOpenAIService;
             // Define the dialog steps
             var waterfallSteps = new WaterfallStep[]
             {
-                HandlePolicyMessageStepAsync
+                PerformSearchAsync
             };
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
             InitialDialogId = nameof(WaterfallDialog);
         }
 
-        private async Task<DialogTurnResult> HandlePolicyMessageStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        private async Task<DialogTurnResult> PerformSearchAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            // Retrieve the passed message
             var options = stepContext.Options as dynamic;
-            string message = options?.Message ?? "No message provided.";
+            var query = options?.Message ?? "No message provided.";
 
-            string response = await _AzureOpenAIService.HandleQueryRefinement(message);
-            // Send the message to the user
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
+            if (string.IsNullOrEmpty(query))
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Query cannot be empty or null."), cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+            }
 
-            // End the dialog after sending the message
-            return await stepContext.EndDialogAsync(null, cancellationToken);
+            // Perform the search
+            var result = await _searchService.GetTopSearchResultAsync(query);
+
+            if (result != null)
+            {
+                var refinedQuery = await _AzureOpenAIService.HandleQueryRefinement(query, result.Content);
+                await stepContext.Context.SendActivityAsync(refinedQuery);
+            }
+
+            else
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("No results found for your query."), cancellationToken);
+            }
+
+            return await stepContext.EndDialogAsync(query, cancellationToken);
+        }
+
+        private Task<DialogTurnResult> RefineSearchAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+            return stepContext.EndDialogAsync(null, cancellationToken);
         }
     }
 }

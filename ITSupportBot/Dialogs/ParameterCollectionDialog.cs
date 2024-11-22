@@ -16,12 +16,15 @@ namespace ITSupportBot.Dialogs
         private readonly AzureOpenAIService _AzureOpenAIService;
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
         private readonly ITSupportService _ITSupportService;
+        private readonly AzureSearchService _AzureSearchService;
 
-        public ParameterCollectionDialog(AzureOpenAIService AzureOpenAIService, IStatePropertyAccessor<UserProfile> userProfileAccessor, ITSupportService iTSupportService)
+        public ParameterCollectionDialog(AzureOpenAIService AzureOpenAIService, IStatePropertyAccessor<UserProfile> userProfileAccessor, ITSupportService iTSupportService, AzureSearchService AzureSearchService
+            )
             : base(nameof(ParameterCollectionDialog))
         {
-            _AzureOpenAIService = AzureOpenAIService ?? throw new ArgumentNullException(nameof(AzureOpenAIService));
-            _userProfileAccessor = userProfileAccessor ?? throw new ArgumentNullException(nameof(userProfileAccessor));
+            _AzureOpenAIService = AzureOpenAIService;
+            _AzureSearchService = AzureSearchService;
+            _userProfileAccessor = userProfileAccessor;
             _ITSupportService = iTSupportService;
 
             var waterfallSteps = new WaterfallStep[]
@@ -31,7 +34,7 @@ namespace ITSupportBot.Dialogs
             HandleUserActionStepAsync,
             SaveEditedTicketStepAsync
             };
-            AddDialog(new QnAHandlingDialog(_AzureOpenAIService));
+            AddDialog(new QnAHandlingDialog(_AzureSearchService, _AzureOpenAIService));
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
             InitialDialogId = nameof(WaterfallDialog);
@@ -70,12 +73,12 @@ namespace ITSupportBot.Dialogs
             userProfile.ChatHistory ??= new List<ChatTransaction>();
 
             // Get the response from the AI service
-            string response = await _AzureOpenAIService.HandleOpenAIResponseAsync(userMessage, userProfile.ChatHistory);
+            var (response,functionName) = await _AzureOpenAIService.HandleOpenAIResponseAsync(userMessage, userProfile.ChatHistory);
 
             // Check if the process is complete (e.g., user query has been successfully processed)
-            if (response.Contains("RowKey"))
+            if (functionName == "createSupportTicket")
             {
-                string rowKey = response.Substring(response.IndexOf("RowKey:") + 7).Trim();
+                string rowKey = response;
                 // Simulate fetching a ticket from the database
                 var ticket = await _ITSupportService.GetTicketAsync(rowKey);
 
@@ -101,7 +104,7 @@ namespace ITSupportBot.Dialogs
                 // End the dialog after successfully processing the ticket
                 return Dialog.EndOfTurn;
             }
-            else if (response == userMessage)
+            else if (functionName == "refine_query")
             {
                 // Begin the QnAHandlingDialog and pass the response as dialog options
                 return await stepContext.BeginDialogAsync(nameof(QnAHandlingDialog), new { Message = response }, cancellationToken);
@@ -146,8 +149,7 @@ namespace ITSupportBot.Dialogs
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Unexpected action. Please try again."), cancellationToken);
-            return Dialog.EndOfTurn;
+            return await stepContext.EndDialogAsync(null, cancellationToken);
         }
 
 

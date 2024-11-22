@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ITSupportBot.Services;
 using Microsoft.Extensions.Configuration;
+using ITSupportBot.Models;
 
 namespace ITSupportBot
 {
@@ -36,24 +37,33 @@ namespace ITSupportBot
             // Create the Bot Adapter with error handling enabled.
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
 
-            // Create the storage we'll be using for User and Conversation state. (Memory is great for testing purposes.)
+            // Create the storage for User and Conversation state.
             services.AddSingleton<IStorage, MemoryStorage>();
 
-            // Create the User state. (Used in this bot's Dialog implementation.)
+            // Register UserState and ConversationState
             services.AddSingleton<UserState>();
-
-            // Create the Conversation state. (Used by the Dialog system itself.)
             services.AddSingleton<ConversationState>();
 
-            // The MainDialog that will be run by the bot.
-            services.AddSingleton<MainDialog>();
+            // Register IStatePropertyAccessor for UserProfile
+            services.AddSingleton<IStatePropertyAccessor<UserProfile>>(provider =>
+            {
+                var userState = provider.GetService<UserState>();
+                return userState.CreateProperty<UserProfile>("UserProfile");
+            });
 
-            // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.
+            // Register dialogs
+            services.AddSingleton<MainDialog>();
+            services.AddSingleton<QnAHandlingDialog>();
+            services.AddSingleton<ParameterCollectionDialog>();
+
+            // Register bot
             services.AddTransient<IBot, DialogAndWelcomeBot<MainDialog>>();
 
-            // Register AzureOpenAIService
+            // Register services
             services.AddSingleton<AzureOpenAIService>();
+            services.AddSingleton<AzureSearchService>();
 
+            // Register ITSupportService with configuration
             services.AddSingleton(provider =>
             {
                 string storageConnectionString = _configuration.GetConnectionString("TableString");
@@ -71,14 +81,14 @@ namespace ITSupportBot
             }
 
             app.UseDefaultFiles()
-                .UseStaticFiles()
-                .UseWebSockets()
-                .UseRouting()
-                .UseAuthorization()
-                .UseEndpoints(endpoints =>
-                {
-                    endpoints.MapControllers();
-                });
+               .UseStaticFiles()
+               .UseWebSockets()
+               .UseRouting()
+               .UseAuthorization()
+               .UseEndpoints(endpoints =>
+               {
+                   endpoints.MapControllers();
+               });
 
             // Uncomment this line if you want to enforce HTTPS
             // app.UseHttpsRedirection();

@@ -23,7 +23,7 @@ namespace ITSupportBot.Services
             _ITSupportService = ITSupportService;
         }
 
-        public async Task<string> HandleOpenAIResponseAsync(string userQuestion, List<ChatTransaction> chatHistory)
+        public async Task<(string, string)> HandleOpenAIResponseAsync(string userQuestion, List<ChatTransaction> chatHistory)
         {
             try
             {
@@ -44,10 +44,21 @@ namespace ITSupportBot.Services
                     }";
 
 
+                string jsonSchemaQuery = @"
+                    {
+                        ""type"": ""object"",
+                        ""properties"": {
+                            ""query"": { ""type"": ""string"", ""description"": ""Refined query of user message optimized ofr Azure search AI"" }
+                        },
+                        ""required"": [""query""]
+                    }";
+
 
 
                 // Define function tool parameters
                 var ticketFunctionParameters = BinaryData.FromString(jsonSchemaTicket);
+
+                var queryFunctionParameters = BinaryData.FromString(jsonSchemaQuery);
 
 
                 // Define the function tool
@@ -58,8 +69,9 @@ namespace ITSupportBot.Services
                 );
 
                 var QnATool = ChatTool.CreateFunctionTool(
-                    "get_policy_information",
-                    "This function just replies with 'Q&A Question' to the user."
+                    "refine_query",
+                    "This function refines the User message to a well defined query for Azure search AI.",
+                    queryFunctionParameters
                 );
 
                 var chatOptions = new ChatCompletionOptions
@@ -70,7 +82,7 @@ namespace ITSupportBot.Services
                 // Prepare the chat history
                 var chatMessages = new List<ChatMessage>
                     {
-                        new SystemChatMessage("You are an  assistant that helps create support tickets by getting detailed information from the user and strictly include only the informations provided buy the user, and also replies with 'Q&A Question' to the user if its Q&A related, dont ask any further questions."),
+                        new SystemChatMessage("You are an  assistant that helps create support tickets by getting detailed information from the user and strictly include only the informations provided buy the user, and also optimize user queries about company policies into Azure Search queries."),
                     };
 
 
@@ -110,7 +122,7 @@ namespace ITSupportBot.Services
                             {
                                 // Save the assistant's message for continuity
                                 chatHistory.Add(new ChatTransaction(completion.Content[0]?.Text ?? "Please provide more details.", userQuestion));
-                                return completion.Content[0]?.Text ?? "Please provide more details.";
+                                return (completion.Content[0]?.Text ?? "Please provide more details.", null);
                             }
 
                             var RowKey = Guid.NewGuid().ToString(); // Generate a unique RowKey
@@ -120,12 +132,15 @@ namespace ITSupportBot.Services
 
                             // Update chat history
                             chatHistory.Add(new ChatTransaction("Your support ticket has been created successfully!", userQuestion));
-                            return $"RowKey: {RowKey}";
+                            return (RowKey, toolCall.FunctionName);
                         }
-                        else if (toolCall.FunctionName == "get_policy_information")
+                        else if (toolCall.FunctionName == "refine_query")
                         {
+                            var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, string>>();
+                            string query = inputData.GetValueOrDefault("query");
+
                             // Parse tool call arguments
-                            return userQuestion;
+                            return (query,toolCall.FunctionName);
                         }
 
                     }
@@ -135,16 +150,16 @@ namespace ITSupportBot.Services
                 string response = completion.Content[0]?.Text ?? "I'm unable to process your request at this time.";
                 chatHistory.Add(new ChatTransaction(response, userQuestion));
 
-                return response;
+                return (response, null);
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in HandleOpenAIResponseAsync: {ex.Message}");
-                return "An error occurred while processing your request. Please try again.";
+                return ("An error occurred while processing your request. Please try again.", null);
             }
         }
 
-        public async Task<string> HandleQueryRefinement(string userQuery)
+        public async Task<string> HandleQueryRefinement(string userQuery, string result)
         {
             try
             {
@@ -154,14 +169,12 @@ namespace ITSupportBot.Services
                 var chatClient = client.GetChatClient("gpt-35-turbo-16k");
 
                 var chatMessages = new List<ChatMessage>
-            {
-                new SystemChatMessage("You are an AI assistant designed to optimize user queries about company policies into structured Azure Search queries. Your task is to analyze natural language questions from users, understand the key intent, and translate them into precise search queries for efficient retrieval from the company's policy database indexed in Azure Search. Ensure that:\n\n1. The generated query captures the user's intent and includes relevant keywords or filters.\n2. The query structure is compatible with Azure Search syntax.\n3. Any ambiguous or missing details are clarified or generalized for better search results.\n4. You prioritize clarity, precision, and relevance while maintaining broad coverage when necessary.\n5. For unsupported questions, indicate the inability to generate a query.\n\nOutput the result in JSON format with the following structure:\n- `searchText`: The core keywords or phrase for the query.\n- `filters`: Any specific filters or conditions (e.g., department, category).\n- `suggestions`: Additional suggestions for improving search results (optional).\n\nIf additional information is required to create an effective query, include a note to the user for clarification."),
-                new UserChatMessage("Example input: Can I carry forward unused leave to the next year?"),
-                new AssistantChatMessage("Example reply: {\n  \"searchText\": \"carry forward unused leave policy\",\n  \"filters\": {\n    \"category\": \"HR\",\n    \"documentType\": \"Employee Handbook\"\n  },\n  \"suggestions\": \"Consider specifying the year or type of leave for more accurate results.\"\n}")
-            };
+                {
+                    new SystemChatMessage("You are a search refinement AI. Your task is to analyze user queries and refine search results to deliver precise and actionable insights.")
+                };
 
 
-                chatMessages.Add(new UserChatMessage(userQuery));
+                chatMessages.Add(new UserChatMessage(userQuery, result));
 
                 ChatCompletion completion = await chatClient.CompleteChatAsync(chatMessages.ToArray());
 

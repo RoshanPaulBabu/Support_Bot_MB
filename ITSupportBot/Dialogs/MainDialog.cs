@@ -14,25 +14,27 @@ using System.Net.Sockets;
 {
 public class MainDialog : ComponentDialog
 {
-private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
-private readonly AzureOpenAIService _AzureOpenAIService;
-private readonly ITSupportService _ITSupportService;
-    
-    public MainDialog(UserState userState, AzureOpenAIService AzureOpenAIService, ITSupportService ITSupportService)
+        private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
+        private readonly AzureOpenAIService _AzureOpenAIService;
+        private readonly ITSupportService _ITSupportService;
+        private readonly AzureSearchService _AzureSearchService;
+
+        public MainDialog(UserState userState, AzureOpenAIService AzureOpenAIService, ITSupportService ITSupportService, AzureSearchService AzureSearchService)
         : base(nameof(MainDialog))
     {
         _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
         _AzureOpenAIService = AzureOpenAIService;
         _ITSupportService = ITSupportService;
+        _AzureSearchService = AzureSearchService;
 
-        var waterfallSteps = new WaterfallStep[]
+            var waterfallSteps = new WaterfallStep[]
         {   WelcomeStepAsync,
             ThankYouStepAsync,
         };
 
         AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
-        AddDialog(new QnAHandlingDialog(_AzureOpenAIService));
-        AddDialog(new ParameterCollectionDialog(_AzureOpenAIService, _userProfileAccessor, _ITSupportService));
+        AddDialog(new QnAHandlingDialog(_AzureSearchService, _AzureOpenAIService));
+        AddDialog(new ParameterCollectionDialog(_AzureOpenAIService, _userProfileAccessor, _ITSupportService, _AzureSearchService));
         InitialDialogId = nameof(WaterfallDialog);
     }
     
