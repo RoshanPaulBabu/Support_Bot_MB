@@ -63,12 +63,17 @@ namespace ITSupportBot
             services.AddSingleton<AzureOpenAIService>();
             services.AddSingleton<AzureSearchService>();
 
+            services.AddSingleton(provider =>
+            {
+                string storageConnectionString = _configuration.GetConnectionString("TableString");
+                return new LeaveService(storageConnectionString);
+            });
+
             // Register ITSupportService with configuration
             services.AddSingleton(provider =>
             {
                 string storageConnectionString = _configuration.GetConnectionString("TableString");
-                string tableName = "Tickets";
-                return new ITSupportService(storageConnectionString, tableName);
+                return new TicketService(storageConnectionString);
             });
         }
 

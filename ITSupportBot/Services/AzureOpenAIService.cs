@@ -14,13 +14,15 @@ namespace ITSupportBot.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<AzureOpenAIService> _logger;
-        private readonly ITSupportService _ITSupportService;
+        private readonly TicketService _TicketService;
+        private readonly LeaveService _LeaveService;
 
-        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, ITSupportService ITSupportService)
+        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, TicketService TicketService, LeaveService leaveService)
         {
             _configuration = configuration;
             _logger = logger;
-            _ITSupportService = ITSupportService;
+            _TicketService = TicketService;
+            _LeaveService = leaveService;
         }
 
         public async Task<(string, string)> HandleOpenAIResponseAsync(string userQuestion, List<ChatTransaction> chatHistory)
@@ -32,26 +34,39 @@ namespace ITSupportBot.Services
                 var client = new AzureOpenAIClient(new Uri(_configuration["AzureOpenAIEndpoint"]), apiKeyCredential);
                 var chatClient = client.GetChatClient("gpt-35-turbo-16k");
 
-                // Define JSON schema for support ticket creation
+                // Define JSON schemas for various tools
                 string jsonSchemaTicket = @"
-                    {
-                        ""type"": ""object"",
-                        ""properties"": {
-                            ""title"": { ""type"": ""string"", ""description"": ""Title of the issue."" },
-                            ""description"": { ""type"": ""string"", ""description"": ""Get a ndetailed description of the issue from the user."" }
-                        },
-                        ""required"": [""title"", ""description""]
-                    }";
-
+                {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""title"": { ""type"": ""string"", ""description"": ""Title of the issue provided by the user."" },
+                        ""description"": { ""type"": ""string"", ""description"": ""Detailed issue description provided by the user."" }
+                    },
+                    ""required"": [""title"", ""description""]
+                }";
 
                 string jsonSchemaQuery = @"
-                    {
-                        ""type"": ""object"",
-                        ""properties"": {
-                            ""query"": { ""type"": ""string"", ""description"": ""Refined query of user message optimized ofr Azure search AI"" }
-                        },
-                        ""required"": [""query""]
-                    }";
+                {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""query"": { ""type"": ""string"", ""description"": ""Refined query derived from the user's input, optimized for Azure Search AI."" }
+                    },
+                    ""required"": [""query""]
+                }";
+
+                string jsonSchemaLeave = @"
+                {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""empID"": { ""type"": ""string"", ""description"": ""Employee ID of the leave requester."" },
+                        ""empName"": { ""type"": ""string"", ""description"": ""Name of the employee."" },
+                        ""leaveType"": { ""type"": ""string"", ""description"": ""Type of leave (earned, sick, Casual)."" },
+                        ""startDate"": { ""type"": ""string"", ""format"": ""date"", ""description"": ""Leave start date in yyyy-MM-dd format."" },
+                        ""endDate"": { ""type"": ""string"", ""format"": ""date"", ""description"": ""Leave end date in yyyy-MM-dd format."" },
+                        ""reason"": { ""type"": ""string"", ""description"": ""Reason for the leave."" }
+                    },
+                    ""required"": [""empID"", ""empName"", ""leaveType"", ""startDate"", ""endDate"", ""reason""]
+                }";
 
 
 
@@ -60,35 +75,52 @@ namespace ITSupportBot.Services
 
                 var queryFunctionParameters = BinaryData.FromString(jsonSchemaQuery);
 
+                var leaveFunctionParameters = BinaryData.FromString(jsonSchemaLeave);
 
-                // Define the function tool
-                var createSupportTicketTool = ChatTool.CreateFunctionTool(
+
+
+                // Define function tools
+                var ticketTool = ChatTool.CreateFunctionTool(
                     "createSupportTicket",
-                    "Creates a new support ticket based on user input by collectin a detailed description from user.",
-                    ticketFunctionParameters
+                    "Collects a detailed issue description from the user and creates a support ticket.",
+                    BinaryData.FromString(jsonSchemaTicket)
                 );
 
-                var QnATool = ChatTool.CreateFunctionTool(
+                var queryTool = ChatTool.CreateFunctionTool(
                     "refine_query",
-                    "This function refines the User message to a well defined query for Azure search AI.",
-                    queryFunctionParameters
+                    "Refines user input into a clear query optimized for Azure Search AI.",
+                    BinaryData.FromString(jsonSchemaQuery)
+                );
+
+                var leaveTool = ChatTool.CreateFunctionTool(
+                    "createLeave",
+                    "Collects leave request details from the user and creates a leave record.",
+                    BinaryData.FromString(jsonSchemaLeave)
                 );
 
                 var chatOptions = new ChatCompletionOptions
                 {
-                    Tools = { createSupportTicketTool, QnATool }
+                    Tools = { ticketTool, queryTool, leaveTool },
+
                 };
 
-                // Prepare the chat history
+
+                // System message with clear role definition
+                var currentDateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+
                 var chatMessages = new List<ChatMessage>
-                    {
-                        new SystemChatMessage("You are an  assistant that helps create support tickets by getting detailed information from the user and strictly include only the informations provided buy the user, and also optimize user queries about company policies into Azure Search queries."),
-                    };
+                {
+                    new SystemChatMessage($@"
+                    You are a precise and structured assistant. Your tasks are:
+                    1. Collect detailed information to create support tickets without adding any data beyond what the user provides.
+                    2. Refine user queries into optimized search queries for Azure Search AI.
+                    3. Collect all required parameters step-by-step for leave requests or ticket creation.
+                    Today's date and time is {currentDateTime}. Adhere strictly to user-provided information and validate missing fields by asking directly.
+                    ")
+                };
 
 
-
-
-                // Add previous conversation history to chat messages
+                // Add chat history
                 foreach (var transaction in chatHistory)
                 {
                     if (!string.IsNullOrEmpty(transaction.UserMessage))
@@ -100,56 +132,50 @@ namespace ITSupportBot.Services
                 // Add the current user question
                 chatMessages.Add(new UserChatMessage(userQuestion));
 
-
                 // Perform chat completion
                 ChatCompletion completion = await chatClient.CompleteChatAsync(chatMessages.ToArray(), chatOptions);
 
+                // Process tool calls
                 if (completion.FinishReason == ChatFinishReason.ToolCalls)
                 {
                     foreach (var toolCall in completion.ToolCalls)
                     {
-                        if (toolCall.FunctionName == "createSupportTicket")
+                        var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, string>>();
+
+                        switch (toolCall.FunctionName)
                         {
-                            // Parse tool call arguments
-                            var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, string>>();
-                            _logger.LogInformation($"Title: {inputData.GetValueOrDefault("title")}, Description: {inputData.GetValueOrDefault("description")}");
+                            case "createSupportTicket":
+                                var title = inputData.GetValueOrDefault("title");
+                                var description = inputData.GetValueOrDefault("description");
+                                var ticketId = Guid.NewGuid().ToString();
 
-                            // Extract required parameters
-                            string title = inputData.GetValueOrDefault("title");
-                            string description = inputData.GetValueOrDefault("description");
+                                await _TicketService.SaveTicketAsync(title, description, ticketId);
+                                chatHistory.Add(new ChatTransaction("Your support ticket has been created successfully!", userQuestion));
+                                return (ticketId, toolCall.FunctionName);
 
-                            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(description))
-                            {
-                                // Save the assistant's message for continuity
-                                chatHistory.Add(new ChatTransaction(completion.Content[0]?.Text ?? "Please provide more details.", userQuestion));
-                                return (completion.Content[0]?.Text ?? "Please provide more details.", null);
-                            }
+                            case "refine_query":
+                                var query = inputData.GetValueOrDefault("query");
+                                return (query, toolCall.FunctionName);
 
-                            var RowKey = Guid.NewGuid().ToString(); // Generate a unique RowKey
+                            case "createLeave":
+                                var empID = inputData.GetValueOrDefault("empID");
+                                var empName = inputData.GetValueOrDefault("empName");
+                                var leaveType = inputData.GetValueOrDefault("leaveType");
+                                var startDate = inputData.GetValueOrDefault("startDate");
+                                var endDate = inputData.GetValueOrDefault("endDate");
+                                var reason = inputData.GetValueOrDefault("reason");
+                                var leaveId = Guid.NewGuid().ToString();
 
-                            // All required parameters collected
-                            await _ITSupportService.SaveTicketAsync(title, description, RowKey);
-
-                            // Update chat history
-                            chatHistory.Add(new ChatTransaction("Your support ticket has been created successfully!", userQuestion));
-                            return (RowKey, toolCall.FunctionName);
+                                await _LeaveService.SaveLeaveAsync(empID, empName, leaveType, startDate, endDate, reason, leaveId);
+                                chatHistory.Add(new ChatTransaction("Your leave request has been successfully submitted!", userQuestion));
+                                return (leaveId, "Your leave request has been submitted successfully and is pending approval, you can check it using your leave id: ");
                         }
-                        else if (toolCall.FunctionName == "refine_query")
-                        {
-                            var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, string>>();
-                            string query = inputData.GetValueOrDefault("query");
-
-                            // Parse tool call arguments
-                            return (query,toolCall.FunctionName);
-                        }
-
                     }
                 }
 
-                // Save the assistant's response for continuity
-                string response = completion.Content[0]?.Text ?? "I'm unable to process your request at this time.";
+                // Default response
+                var response = completion.Content[0]?.Text ?? "I'm unable to process your request at this time.";
                 chatHistory.Add(new ChatTransaction(response, userQuestion));
-
                 return (response, null);
             }
             catch (Exception ex)
@@ -159,7 +185,7 @@ namespace ITSupportBot.Services
             }
         }
 
-        public async Task<string> HandleQueryRefinement(string userQuery, string result)
+public async Task<string> HandleQueryRefinement(string userQuery, string result)
         {
             try
             {

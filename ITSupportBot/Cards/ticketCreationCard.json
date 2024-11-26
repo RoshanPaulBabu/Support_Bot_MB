@@ -1,36 +1,133 @@
 {
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-    "version": "1.0",
+    "version": "1.3",
     "type": "AdaptiveCard",
     "body": [
         {
             "type": "TextBlock",
             "size": "Large",
             "weight": "Bolder",
-            "text": "Ticket Details"
+            "text": "Ticket Details",
+            "wrap": true
         },
         {
-            "type": "FactSet",
-            "facts": [
+            "type": "Container",
+            "items": [
                 {
-                    "title": "Ticket ID:",
-                    "value": "${ticketId}"
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Ticket ID:",
+                                    "weight": "Bolder",
+                                    "wrap": true
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${ticketId}",
+                                    "wrap": true
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
-                    "title": "Title:",
-                    "value": "${title}"
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Title:",
+                                    "weight": "Bolder",
+                                    "wrap": true
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${title}",
+                                    "wrap": true
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
-                    "title": "Description:",
-                    "value": "${description}"
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Description:",
+                                    "weight": "Bolder",
+                                    "wrap": true
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${description}",
+                                    "wrap": true
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
-                    "title": "Created At:",
-                    "value": "${createdAt}"
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Created At:",
+                                    "weight": "Bolder",
+                                    "wrap": true
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${createdAt}",
+                                    "wrap": true
+                                }
+                            ]
+                        }
+                    ]
                 }
             ],
-            "separator": true,
-            "spacing": "Small"
+            "spacing": "Small",
+            "separator": true
         }
     ],
     "actions": [

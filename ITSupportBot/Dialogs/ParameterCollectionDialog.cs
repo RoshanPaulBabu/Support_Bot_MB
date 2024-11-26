@@ -15,10 +15,10 @@ namespace ITSupportBot.Dialogs
     {
         private readonly AzureOpenAIService _AzureOpenAIService;
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
-        private readonly ITSupportService _ITSupportService;
+        private readonly TicketService _ITSupportService;
         private readonly AzureSearchService _AzureSearchService;
 
-        public ParameterCollectionDialog(AzureOpenAIService AzureOpenAIService, IStatePropertyAccessor<UserProfile> userProfileAccessor, ITSupportService iTSupportService, AzureSearchService AzureSearchService
+        public ParameterCollectionDialog(AzureOpenAIService AzureOpenAIService, IStatePropertyAccessor<UserProfile> userProfileAccessor, TicketService iTSupportService, AzureSearchService AzureSearchService
             )
             : base(nameof(ParameterCollectionDialog))
         {
@@ -74,6 +74,7 @@ namespace ITSupportBot.Dialogs
 
             // Get the response from the AI service
             var (response,functionName) = await _AzureOpenAIService.HandleOpenAIResponseAsync(userMessage, userProfile.ChatHistory);
+            var FinalResponse = $"{functionName}{response}";
 
             // Check if the process is complete (e.g., user query has been successfully processed)
             if (functionName == "createSupportTicket")
@@ -110,9 +111,16 @@ namespace ITSupportBot.Dialogs
                 return await stepContext.BeginDialogAsync(nameof(QnAHandlingDialog), new { Message = response }, cancellationToken);
             }
 
+            else if (!string.IsNullOrEmpty(functionName) && functionName.Contains("employee id"))
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{FinalResponse}"), cancellationToken);
+                // Begin the QnAHandlingDialog and pass the response as dialog options
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+            }
+
 
             // If the response indicates the process is not complete, replace the dialog to collect more parameters
-            return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
+            return await stepContext.ReplaceDialogAsync(InitialDialogId, FinalResponse, cancellationToken);
         }
 
 

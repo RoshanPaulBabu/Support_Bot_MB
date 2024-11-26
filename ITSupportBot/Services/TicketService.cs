@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 
 namespace ITSupportBot.Services
 {
-    public class ITSupportService
+    public class TicketService
     {
         private readonly TableClient _tableClient;
 
-        public ITSupportService(string storageConnectionString, string tableName)
+        public TicketService(string storageConnectionString)
         {
             var serviceClient = new TableServiceClient(storageConnectionString);
-            _tableClient = serviceClient.GetTableClient(tableName);
+            _tableClient = serviceClient.GetTableClient("Tickets");
             _tableClient.CreateIfNotExists(); // Ensure the table exists
         }
 
@@ -33,6 +33,8 @@ namespace ITSupportBot.Services
             var ticket = await _tableClient.GetEntityAsync<Ticket>("SupportTickets", rowKey);
             return ticket.Value;
         }
+
+
 
         public async Task UpdateTicketAsync(string rowKey, string updatedTitle, string updatedDescription)
         {

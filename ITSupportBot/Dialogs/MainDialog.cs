@@ -16,10 +16,10 @@ public class MainDialog : ComponentDialog
 {
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
         private readonly AzureOpenAIService _AzureOpenAIService;
-        private readonly ITSupportService _ITSupportService;
+        private readonly TicketService _ITSupportService;
         private readonly AzureSearchService _AzureSearchService;
 
-        public MainDialog(UserState userState, AzureOpenAIService AzureOpenAIService, ITSupportService ITSupportService, AzureSearchService AzureSearchService)
+        public MainDialog(UserState userState, AzureOpenAIService AzureOpenAIService, TicketService ITSupportService, AzureSearchService AzureSearchService)
         : base(nameof(MainDialog))
     {
         _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
