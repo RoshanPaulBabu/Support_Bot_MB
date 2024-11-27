@@ -120,7 +120,7 @@ namespace ITSupportBot.Dialogs
 
 
             // If the response indicates the process is not complete, replace the dialog to collect more parameters
-            return await stepContext.ReplaceDialogAsync(InitialDialogId, FinalResponse, cancellationToken);
+            return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
         }
 
 

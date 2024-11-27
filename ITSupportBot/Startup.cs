@@ -75,6 +75,12 @@ namespace ITSupportBot
                 string storageConnectionString = _configuration.GetConnectionString("TableString");
                 return new TicketService(storageConnectionString);
             });
+
+            services.AddSingleton(provider =>
+            {
+                string storageConnectionString = _configuration.GetConnectionString("TableString");
+                return new HolidayService(storageConnectionString);
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

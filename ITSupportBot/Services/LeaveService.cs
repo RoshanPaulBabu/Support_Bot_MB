@@ -1,4 +1,5 @@
-﻿using Azure.Data.Tables;
+﻿using Azure;
+using Azure.Data.Tables;
 using ITSupportBot.Models;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace ITSupportBot.Services
 {
+
     public class LeaveService
     {
         private readonly TableClient _tableClient;
@@ -36,57 +38,30 @@ namespace ITSupportBot.Services
             await _tableClient.AddEntityAsync(leave);
         }
 
-        // Get all leaves for a specific employee by EmpID
-        public async Task<List<Leave>> GetLeavesByEmpIDAsync(string empID)
+        public async Task<Leave> GetLatestLeaveStatusAsync(string empID)
         {
-            var queryResults = _tableClient.QueryAsync<Leave>(l => l.EmpID == empID);
-
-            var leaves = new List<Leave>();
-            await foreach (var leave in queryResults)
+            try
             {
-                leaves.Add(leave);
+                // Fetch all leave records for the given EmpID
+                var leaveRecords = new List<Leave>();
+
+                await foreach (var leave in _tableClient.QueryAsync<Leave>(leave => leave.EmpID == empID))
+                {
+                    leaveRecords.Add(leave);
+                }
+
+                // Find the latest leave by sorting in memory
+                var latestLeave = leaveRecords
+                    .OrderByDescending(leave => leave.CreatedAt)
+                    .FirstOrDefault();
+
+                return latestLeave;
             }
-
-            return leaves;
-        }
-
-        // Update leaves for an employee by EmpID and RowKey
-        public async Task UpdateLeaveByEmpIDAsync(string empID, string rowKey, string updatedLeaveType, DateTime updatedStartDate, DateTime updatedEndDate, string updatedReason, string updatedStatus)
-        {
-            var leave = await _tableClient.GetEntityAsync<Leave>("EmployeeLeaves", rowKey);
-
-            if (leave != null && leave.Value.EmpID == empID)
+            catch (RequestFailedException ex)
             {
-                var updatedLeave = leave.Value;
-                updatedLeave.LeaveType = updatedLeaveType;
-                updatedLeave.StartDate = updatedStartDate;
-                updatedLeave.EndDate = updatedEndDate;
-                updatedLeave.Reason = updatedReason;
-                updatedLeave.Status = updatedStatus;
-
-                await _tableClient.UpdateEntityAsync(updatedLeave, updatedLeave.ETag, TableUpdateMode.Replace);
-            }
-            else
-            {
-                throw new Exception("Leave not found for the specified employee.");
-            }
-        }
-
-        // Update the status of a leave by EmpID and RowKey
-        public async Task UpdateLeaveStatusByEmpIDAsync(string empID, string rowKey, string updatedStatus)
-        {
-            var leave = await _tableClient.GetEntityAsync<Leave>("EmployeeLeaves", rowKey);
-
-            if (leave != null && leave.Value.EmpID == empID)
-            {
-                var updatedLeave = leave.Value;
-                updatedLeave.Status = updatedStatus;
-
-                await _tableClient.UpdateEntityAsync(updatedLeave, updatedLeave.ETag, TableUpdateMode.Replace);
-            }
-            else
-            {
-                throw new Exception("Leave not found for the specified employee.");
+                // Handle Azure Table Storage errors
+                Console.WriteLine($"Error retrieving leave records: {ex.Message}");
+                throw;
             }
         }
     }

@@ -7,6 +7,8 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using ITSupportBot.Models; // Assuming the updated ChatTransaction class is here
+    using System.Linq;
+
 
 namespace ITSupportBot.Services
 {
@@ -16,13 +18,15 @@ namespace ITSupportBot.Services
         private readonly ILogger<AzureOpenAIService> _logger;
         private readonly TicketService _TicketService;
         private readonly LeaveService _LeaveService;
+        private readonly HolidayService _HolidayService;
 
-        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, TicketService TicketService, LeaveService leaveService)
+        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, TicketService TicketService, LeaveService leaveService, HolidayService holidayService)
         {
             _configuration = configuration;
             _logger = logger;
             _TicketService = TicketService;
             _LeaveService = leaveService;
+            _HolidayService = holidayService;
         }
 
         public async Task<(string, string)> HandleOpenAIResponseAsync(string userQuestion, List<ChatTransaction> chatHistory)
@@ -69,14 +73,27 @@ namespace ITSupportBot.Services
                 }";
 
 
+                string jsonSchemaLeaveStatus = @"
+                {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""empID"": { ""type"": ""string"", ""description"": ""Employee ID of the leave requester."" }
+                    },
+                    ""required"": [""empID""]
+                }";
 
-                // Define function tool parameters
-                var ticketFunctionParameters = BinaryData.FromString(jsonSchemaTicket);
-
-                var queryFunctionParameters = BinaryData.FromString(jsonSchemaQuery);
-
-                var leaveFunctionParameters = BinaryData.FromString(jsonSchemaLeave);
-
+                string jsonSchemaHolidayQuery = @"
+                {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""startDate"": { 
+                            ""type"": ""string"", 
+                            ""format"": ""date"", 
+                            ""description"": ""The start date to fetch holidays from (YYYY-MM-DD)."" 
+                        }
+                    },
+                    ""required"": [""startDate""]
+                }";
 
 
                 // Define function tools
@@ -98,9 +115,21 @@ namespace ITSupportBot.Services
                     BinaryData.FromString(jsonSchemaLeave)
                 );
 
+                var leaveStatusTool = ChatTool.CreateFunctionTool(
+                    "GetLeaveStatus",
+                    "Get latest leave status.",
+                    BinaryData.FromString(jsonSchemaLeaveStatus)
+                );
+
+                var holidayQueryTool = ChatTool.CreateFunctionTool(
+                    "GetHolidaysAfterDate",
+                    "Fetch a list of holidays after a specific date.",
+                    BinaryData.FromString(jsonSchemaHolidayQuery)
+                );
+
                 var chatOptions = new ChatCompletionOptions
                 {
-                    Tools = { ticketTool, queryTool, leaveTool },
+                    Tools = { ticketTool, queryTool, leaveTool, leaveStatusTool, holidayQueryTool },
 
                 };
 
@@ -114,9 +143,12 @@ namespace ITSupportBot.Services
                     You are a precise and structured assistant. Your tasks are:
                     1. Collect detailed information to create support tickets without adding any data beyond what the user provides.
                     2. Refine user queries into optimized search queries for Azure Search AI.
-                    3. Collect all required parameters step-by-step for leave requests or ticket creation.
+                    3. Collect all required parameters step-by-step for leave requests, ticket creation, or holiday queries.
+                    4. Get leave status by collecting employee ID without adding any data beyond what the user provides.
+                    5. Retrieve holiday details by collecting a start date and ensuring the date is provided in the correct format (YYYY-MM-DD).
                     Today's date and time is {currentDateTime}. Adhere strictly to user-provided information and validate missing fields by asking directly.
                     ")
+
                 };
 
 
@@ -168,7 +200,40 @@ namespace ITSupportBot.Services
 
                                 await _LeaveService.SaveLeaveAsync(empID, empName, leaveType, startDate, endDate, reason, leaveId);
                                 chatHistory.Add(new ChatTransaction("Your leave request has been successfully submitted!", userQuestion));
-                                return (leaveId, "Your leave request has been submitted successfully and is pending approval, you can check it using your leave id: ");
+                                return (empID, "Your leave request has been submitted successfully and is pending approval, you can check it using your employee id: ");
+
+
+                            case "GetLeaveStatus":
+                                var emplID = inputData.GetValueOrDefault("empID");
+
+                                var empstatus = await _LeaveService.GetLatestLeaveStatusAsync(emplID);
+
+                                if (empstatus != null)
+                                {
+                                    chatHistory.Add(new ChatTransaction($"Succefully got the latest leave status, status {empstatus.Status.ToString()}", userQuestion));
+                                    return (empstatus.Status.ToString(), toolCall.FunctionName);
+                                }
+                                else
+                                {
+                                    return ("You doesnt have any leave applications or the emp id is incorrect", toolCall.FunctionName);
+                                }
+
+
+                            case "GetHolidaysAfterDate":
+                                var Date = inputData.GetValueOrDefault("startDate");
+
+                                var holidays = await _HolidayService.GetHolidaysAfterDateAsync(Date);
+
+                                if (holidays.Count == 0)
+                                {
+                                    chatHistory.Add(new ChatTransaction($"No holidays found after {Date:yyyy-MM-dd}.", userQuestion));
+                                    return ($"No holidays found after {Date:yyyy-MM-dd}.", toolCall.FunctionName);
+                                }
+                                // Format the list of holidays as a string
+                                var holidayList = string.Join("\r\n", holidays.Select(h => $"{h.HolidayName} on {h.Date:yyyy-MM-dd}"));
+                                return ($"Holidays after {Date:yyyy-MM-dd}:\r\n{holidayList}", toolCall.FunctionName);
+
+
                         }
                     }
                 }
