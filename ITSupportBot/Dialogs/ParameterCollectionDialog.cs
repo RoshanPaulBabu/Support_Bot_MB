@@ -8,6 +8,8 @@ using Microsoft.Bot.Builder;
 using System;
 using Microsoft.Bot.Schema;
 using System.IO;
+using Newtonsoft.Json;
+using System.Linq;
 
 namespace ITSupportBot.Dialogs
 {
@@ -76,33 +78,29 @@ namespace ITSupportBot.Dialogs
             var (response,functionName) = await _AzureOpenAIService.HandleOpenAIResponseAsync(userMessage, userProfile.ChatHistory);
             var FinalResponse = $"{functionName}{response}";
 
-            // Check if the process is complete (e.g., user query has been successfully processed)
             if (functionName == "createSupportTicket")
             {
                 string rowKey = response;
-                // Simulate fetching a ticket from the database
+
+                // Fetch the ticket from the service
                 var ticket = await _ITSupportService.GetTicketAsync(rowKey);
 
-                // Load and customize the adaptive card template
-                string cardJson = File.ReadAllText("Cards/ticketCreationCard.json");
-                cardJson = cardJson.Replace("${title}", ticket.Title)
-                                   .Replace("${description}", ticket.Description)
-                                   .Replace("${createdAt}", ticket.CreatedAt.ToString("MM/dd/yyyy HH:mm"))
-                                   .Replace("${ticketId}", ticket.RowKey);
+                // Create the adaptive card using the helper method
+                var adaptiveCardAttachment = CreateAdaptiveCardAttachment("ticketCreationCard.json", new Dictionary<string, string>
+        {
+            { "title", ticket.Title },
+            { "description", ticket.Description },
+            { "createdAt", ticket.CreatedAt.ToString("MM/dd/yyyy HH:mm") },
+            { "ticketId", ticket.RowKey }
+        });
 
-                // Create and send the adaptive card
-                var adaptiveCardAttachment = new Attachment
-                {
-                    ContentType = "application/vnd.microsoft.card.adaptive",
-                    Content = Newtonsoft.Json.JsonConvert.DeserializeObject(cardJson)
-                };
-
+                // Send the adaptive card
                 var reply = MessageFactory.Attachment(adaptiveCardAttachment);
                 await stepContext.Context.SendActivityAsync(reply, cancellationToken);
 
                 stepContext.Values["rowKey"] = rowKey;
 
-                // End the dialog after successfully processing the ticket
+                // End the dialog after processing the ticket
                 return Dialog.EndOfTurn;
             }
             else if (functionName == "refine_query")
@@ -191,6 +189,39 @@ namespace ITSupportBot.Dialogs
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
         }
+
+        private Attachment CreateAdaptiveCardAttachment(string cardFileName, Dictionary<string, string> placeholders)
+        {
+            // Locate the resource path for the card file
+            var resourcePath = GetType().Assembly.GetManifestResourceNames()
+                                .FirstOrDefault(name => name.EndsWith(cardFileName, StringComparison.OrdinalIgnoreCase));
+
+            if (resourcePath == null)
+            {
+                throw new FileNotFoundException($"The specified card file '{cardFileName}' was not found as an embedded resource.");
+            }
+
+            using (var stream = GetType().Assembly.GetManifestResourceStream(resourcePath))
+            using (var reader = new StreamReader(stream))
+            {
+                // Read the card template
+                var adaptiveCard = reader.ReadToEnd();
+
+                // Replace placeholders dynamically
+                foreach (var placeholder in placeholders)
+                {
+                    adaptiveCard = adaptiveCard.Replace($"${{{placeholder.Key}}}", placeholder.Value);
+                }
+
+                // Return the populated adaptive card as an attachment
+                return new Attachment
+                {
+                    ContentType = "application/vnd.microsoft.card.adaptive",
+                    Content = Newtonsoft.Json.JsonConvert.DeserializeObject(adaptiveCard, new JsonSerializerSettings { MaxDepth = null }),
+                };
+            }
+        }
+
 
     }
 
