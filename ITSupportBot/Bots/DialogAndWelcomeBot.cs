@@ -37,6 +37,8 @@ namespace ITSupportBot.Bots
             }
         }
 
+
+
         // Load attachment from embedded resource.
         private Attachment CreateAdaptiveCardAttachment()
         {

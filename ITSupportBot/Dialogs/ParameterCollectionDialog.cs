@@ -54,19 +54,21 @@ namespace ITSupportBot.Dialogs
                );
 
             }
-            else
-            {
-                return await stepContext.PromptAsync(
-                    nameof(TextPrompt),
-                    new PromptOptions { Prompt = MessageFactory.Text("Hello! How can I help you today?") },
-                    cancellationToken
-                );
+        else
+        {
+            // Send a message but then proceed with the dialog logic
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you today?"), cancellationToken);
 
-            }
+            // Explicitly return an EndOfTurn result, or continue the dialog
+            return Dialog.EndOfTurn;
+        }
         }
 
         private async Task<DialogTurnResult> BeginParameterCollectionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            
+            var card = stepContext.Context.Activity.Value;
+
             // Retrieve the user query (response from the previous step)
             string userMessage = (string)stepContext.Result;
 
@@ -74,8 +76,11 @@ namespace ITSupportBot.Dialogs
             var userProfile = await _userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfile(), cancellationToken);
             userProfile.ChatHistory ??= new List<ChatTransaction>();
 
+            // Determine what to pass to HandleOpenAIResponseAsync
+            string inputToAIService = card != null ? card.ToString() : userMessage;
+
             // Get the response from the AI service
-            var (response,functionName) = await _AzureOpenAIService.HandleOpenAIResponseAsync(userMessage, userProfile.ChatHistory);
+            var (response, functionName) = await _AzureOpenAIService.HandleOpenAIResponseAsync(inputToAIService, userProfile.ChatHistory);
             var FinalResponse = $"{functionName}{response}";
 
             if (functionName == "createSupportTicket")
@@ -107,6 +112,19 @@ namespace ITSupportBot.Dialogs
             {
                 // Begin the QnAHandlingDialog and pass the response as dialog options
                 return await stepContext.BeginDialogAsync(nameof(QnAHandlingDialog), new { Message = response }, cancellationToken);
+            }
+
+            else if (functionName == "GetLeaveStatus")
+            {
+                 if (!string.IsNullOrEmpty(response) && response.Contains("incorrect"))
+                {
+                    return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
+                }
+                else {
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Text($"Your leave request is {response}"), cancellationToken);
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                }
+                 
             }
 
             else if (!string.IsNullOrEmpty(functionName) && functionName.Contains("employee id"))

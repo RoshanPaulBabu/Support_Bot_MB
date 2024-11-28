@@ -22,31 +22,39 @@
             "type": "TextBlock",
             "size": "Default",
             "isSubtle": true,
-            "text": "I'm here to assist you with troubleshooting, scheduling support, and more.",
+            "text": "I'm here to assist you with support tickets, leaves, and more.",
             "wrap": true,
             "maxLines": 0
         }
     ],
     "actions": [
         {
-            "type": "Action.OpenUrl",
-            "title": "Troubleshoot a Problem",
-            "url": "https://support.example.com/troubleshoot"
+            "type": "Action.Submit",
+            "title": "Create Support Ticket",
+            "data": {
+                "action": "Create Support Ticket"
+            }
         },
         {
-            "type": "Action.OpenUrl",
-            "title": "Schedule a Support Call",
-            "url": "https://support.example.com/schedule"
+            "type": "Action.Submit",
+            "title": "Sent Leave Application",
+            "data": {
+                "action": "Sent Leave Application"
+            }
         },
         {
-            "type": "Action.OpenUrl",
-            "title": "Access IT Resources",
-            "url": "https://support.example.com/resources"
+            "type": "Action.Submit",
+            "title": "Get Leave Status",
+            "data": {
+                "action": "Get Leave Status"
+            }
         },
         {
-            "type": "Action.OpenUrl",
-            "title": "Talk to an Agent",
-            "url": "https://support.example.com/agent"
+            "type": "Action.Submit",
+            "title": "Get Holidays List",
+            "data": {
+                "action": "Get Holidays List"
+            }
         }
     ]
 }

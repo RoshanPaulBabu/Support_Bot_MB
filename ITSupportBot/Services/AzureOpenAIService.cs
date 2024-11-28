@@ -36,7 +36,7 @@ namespace ITSupportBot.Services
                 // Initialize OpenAI client
                 var apiKeyCredential = new System.ClientModel.ApiKeyCredential(_configuration["AzureOpenAIKey"]);
                 var client = new AzureOpenAIClient(new Uri(_configuration["AzureOpenAIEndpoint"]), apiKeyCredential);
-                var chatClient = client.GetChatClient("gpt-35-turbo-16k");
+                var chatClient = client.GetChatClient("gpt-35-turbo");
 
                 // Define JSON schemas for various tools
                 string jsonSchemaTicket = @"
