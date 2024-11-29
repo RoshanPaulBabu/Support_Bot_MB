@@ -127,6 +127,13 @@ namespace ITSupportBot.Dialogs
                  
             }
 
+            else if (functionName == "GetHolidaysAfterDate")
+            {
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{response}"), cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+
+            }
+
             else if (!string.IsNullOrEmpty(functionName) && functionName.Contains("employee id"))
             {
                 await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{FinalResponse}"), cancellationToken);

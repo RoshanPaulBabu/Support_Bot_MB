@@ -105,7 +105,7 @@ namespace ITSupportBot.Services
 
                 var queryTool = ChatTool.CreateFunctionTool(
                     "refine_query",
-                    "Refines user input into a clear query optimized for Azure Search AI.",
+                    "Refines user input related to company policies into a clear query optimized for Azure Search AI.",
                     BinaryData.FromString(jsonSchemaQuery)
                 );
 
@@ -142,7 +142,7 @@ namespace ITSupportBot.Services
                     new SystemChatMessage($@"
                     You are a precise and structured assistant. Your tasks are:
                     1. Collect detailed information to create support tickets without adding any data beyond what the user provides.
-                    2. Refine user queries into optimized search queries for Azure Search AI.
+                    2. Refine user queries related to company policies into optimized search queries for Azure Search AI.
                     3. Collect all required parameters step-by-step for leave requests, ticket creation, or holiday queries.
                     4. Get leave status by collecting employee ID without adding any data beyond what the user provides.
                     5. Retrieve holiday details by collecting a start date and ensuring the date is provided in the correct format (YYYY-MM-DD).
