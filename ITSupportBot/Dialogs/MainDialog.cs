@@ -10,22 +10,19 @@ using ITSupportBot.Models;
 using System.IO;
 using System.Net.Sockets;
 using Microsoft.Bot.Builder.Dialogs.Choices;
+using ITSupportBot.Helpers;
 namespace ITSupportBot.Dialogs
 {
     public class MainDialog : ComponentDialog
     {
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
-        private readonly AzureOpenAIService _AzureOpenAIService;
-        private readonly TicketService _ITSupportService;
-        private readonly AzureSearchService _AzureSearchService;
+        private readonly ExternalServiceHelper _externalServiceHelper;
 
-        public MainDialog(UserState userState, AzureOpenAIService AzureOpenAIService, TicketService ITSupportService, AzureSearchService AzureSearchService)
+        public MainDialog(UserState userState, ExternalServiceHelper ExternalServiceHelper)
         : base(nameof(MainDialog))
         {
             _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
-            _AzureOpenAIService = AzureOpenAIService;
-            _ITSupportService = ITSupportService;
-            _AzureSearchService = AzureSearchService;
+            _externalServiceHelper = ExternalServiceHelper;
 
             var waterfallSteps = new WaterfallStep[]
         {   WelcomeStepAsync,
@@ -35,8 +32,8 @@ namespace ITSupportBot.Dialogs
         };
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
-            AddDialog(new QnAHandlingDialog(_AzureSearchService, _AzureOpenAIService));
-            AddDialog(new ParameterCollectionDialog(_AzureOpenAIService, _userProfileAccessor, _ITSupportService, _AzureSearchService));
+            AddDialog(new QnAHandlingDialog(_externalServiceHelper));
+            AddDialog(new ParameterCollectionDialog( _externalServiceHelper, _userProfileAccessor));
             AddDialog(new ChoicePrompt(nameof(ChoicePrompt)));
             InitialDialogId = nameof(WaterfallDialog);
         }

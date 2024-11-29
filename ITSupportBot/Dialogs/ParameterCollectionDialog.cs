@@ -10,24 +10,22 @@ using Microsoft.Bot.Schema;
 using System.IO;
 using Newtonsoft.Json;
 using System.Linq;
+using ITSupportBot.Helpers;
 
 namespace ITSupportBot.Dialogs
 {
     public class ParameterCollectionDialog : ComponentDialog
     {
-        private readonly AzureOpenAIService _AzureOpenAIService;
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
-        private readonly TicketService _ITSupportService;
-        private readonly AzureSearchService _AzureSearchService;
+        private readonly ExternalServiceHelper _externalServiceHelper;
 
-        public ParameterCollectionDialog(AzureOpenAIService AzureOpenAIService, IStatePropertyAccessor<UserProfile> userProfileAccessor, TicketService iTSupportService, AzureSearchService AzureSearchService
+
+        public ParameterCollectionDialog(ExternalServiceHelper ExternalServiceHelper, IStatePropertyAccessor<UserProfile> userProfileAccessor
             )
             : base(nameof(ParameterCollectionDialog))
         {
-            _AzureOpenAIService = AzureOpenAIService;
-            _AzureSearchService = AzureSearchService;
             _userProfileAccessor = userProfileAccessor;
-            _ITSupportService = iTSupportService;
+            _externalServiceHelper = ExternalServiceHelper;
 
             var waterfallSteps = new WaterfallStep[]
             {
@@ -36,7 +34,7 @@ namespace ITSupportBot.Dialogs
             HandleUserActionStepAsync,
             SaveEditedTicketStepAsync
             };
-            AddDialog(new QnAHandlingDialog(_AzureSearchService, _AzureOpenAIService));
+            AddDialog(new QnAHandlingDialog(_externalServiceHelper));
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
             InitialDialogId = nameof(WaterfallDialog);
@@ -66,46 +64,35 @@ namespace ITSupportBot.Dialogs
 
         private async Task<DialogTurnResult> BeginParameterCollectionStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            
             var card = stepContext.Context.Activity.Value;
 
             // Retrieve the user query (response from the previous step)
             string userMessage = (string)stepContext.Result;
 
-            // Get user profile and initialize chat history if necessary
             var userProfile = await _userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfile(), cancellationToken);
             userProfile.ChatHistory ??= new List<ChatTransaction>();
 
             // Determine what to pass to HandleOpenAIResponseAsync
             string inputToAIService = card != null ? card.ToString() : userMessage;
 
-            // Get the response from the AI service
-            var (response, functionName) = await _AzureOpenAIService.HandleOpenAIResponseAsync(inputToAIService, userProfile.ChatHistory);
-            var FinalResponse = $"{functionName}{response}";
+            var (response, functionName) = await _externalServiceHelper.HandleOpenAIResponseAsync(inputToAIService, userProfile.ChatHistory);
+            var LeaveResponse = $"{functionName}{response}";
 
             if (functionName == "createSupportTicket")
             {
-                string rowKey = response;
+                var ticket = await _externalServiceHelper.GetTicketAsync(response);
+                var adaptiveCardAttachment = _externalServiceHelper.CreateAdaptiveCardAttachment(
+                    "ticketCreationCard.json",
+                    new Dictionary<string, string>
+                    {
+                        { "title", ticket.Title },
+                        { "description", ticket.Description },
+                        { "createdAt", ticket.CreatedAt.ToString("MM/dd/yyyy HH:mm") },
+                        { "ticketId", ticket.RowKey }
+                    });
 
-                // Fetch the ticket from the service
-                var ticket = await _ITSupportService.GetTicketAsync(rowKey);
-
-                // Create the adaptive card using the helper method
-                var adaptiveCardAttachment = CreateAdaptiveCardAttachment("ticketCreationCard.json", new Dictionary<string, string>
-        {
-            { "title", ticket.Title },
-            { "description", ticket.Description },
-            { "createdAt", ticket.CreatedAt.ToString("MM/dd/yyyy HH:mm") },
-            { "ticketId", ticket.RowKey }
-        });
-
-                // Send the adaptive card
-                var reply = MessageFactory.Attachment(adaptiveCardAttachment);
-                await stepContext.Context.SendActivityAsync(reply, cancellationToken);
-
-                stepContext.Values["rowKey"] = rowKey;
-
-                // End the dialog after processing the ticket
+                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(adaptiveCardAttachment), cancellationToken);
+                stepContext.Values["rowKey"] = ticket.RowKey;
                 return Dialog.EndOfTurn;
             }
             else if (functionName == "refine_query")
@@ -116,7 +103,7 @@ namespace ITSupportBot.Dialogs
 
             else if (functionName == "GetLeaveStatus")
             {
-                 if (!string.IsNullOrEmpty(response) && response.Contains("incorrect"))
+                 if (!string.IsNullOrEmpty(response) && response.Contains("invalid"))
                 {
                     return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
                 }
@@ -136,7 +123,7 @@ namespace ITSupportBot.Dialogs
 
             else if (!string.IsNullOrEmpty(functionName) && functionName.Contains("employee id"))
             {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{FinalResponse}"), cancellationToken);
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{LeaveResponse}"), cancellationToken);
                 // Begin the QnAHandlingDialog and pass the response as dialog options
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
@@ -156,7 +143,7 @@ namespace ITSupportBot.Dialogs
                 var rowKey =  stepContext.Values["rowKey"];
 
                 // Fetch ticket using rowKey
-                var ticket = await _ITSupportService.GetTicketAsync(rowKey.ToString());  // Pass the rowKey here
+                var ticket = await _externalServiceHelper.GetTicketAsync(rowKey.ToString());  // Pass the rowKey here
 
                 // Proceed with the rest of the logic after ticket is fetched
                 string editCardJson = File.ReadAllText("Cards/editTicketCard.json");
@@ -201,7 +188,7 @@ namespace ITSupportBot.Dialogs
             try
             {
                 // Update the existing ticket in the database
-                await _ITSupportService.UpdateTicketAsync(rowKey, updatedTitle, updatedDescription);
+                await _externalServiceHelper.UpdateTicketAsync(rowKey, updatedTitle, updatedDescription);
 
                 // Send a success message
                 await stepContext.Context.SendActivityAsync(MessageFactory.Text("Your ticket has been updated successfully."), cancellationToken);

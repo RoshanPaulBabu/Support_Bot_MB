@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using ITSupportBot.Services;
 using Microsoft.Extensions.Configuration;
 using ITSupportBot.Models;
+using ITSupportBot.Helpers;
 
 namespace ITSupportBot
 {
@@ -62,6 +63,8 @@ namespace ITSupportBot
             // Register services
             services.AddSingleton<AzureOpenAIService>();
             services.AddSingleton<AzureSearchService>();
+
+            services.AddSingleton<ExternalServiceHelper>();
 
             services.AddSingleton(provider =>
             {

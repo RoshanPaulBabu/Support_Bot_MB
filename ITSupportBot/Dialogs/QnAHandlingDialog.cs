@@ -5,18 +5,17 @@ using System.Threading.Tasks;
 using System.Threading;
 using ITSupportBot.Models;
 using ITSupportBot.Services;
+using ITSupportBot.Helpers;
 
 namespace ITSupportBot.Dialogs
 {
     public class QnAHandlingDialog : ComponentDialog
     {
-        private readonly AzureOpenAIService _AzureOpenAIService;
-        private readonly AzureSearchService _searchService;
-        public QnAHandlingDialog(AzureSearchService searchService, AzureOpenAIService AzureOpenAIService) : base(nameof(QnAHandlingDialog))
+        private readonly ExternalServiceHelper _externalServiceHelper;
+        public QnAHandlingDialog(ExternalServiceHelper ExternalServiceHelper) : base(nameof(QnAHandlingDialog))
         {
 
-            _searchService = searchService;
-            _AzureOpenAIService = AzureOpenAIService;
+            _externalServiceHelper = ExternalServiceHelper;
             // Define the dialog steps
             var waterfallSteps = new WaterfallStep[]
             {
@@ -39,11 +38,11 @@ namespace ITSupportBot.Dialogs
             }
 
             // Perform the search
-            var result = await _searchService.GetTopSearchResultAsync(query);
+            var result = await _externalServiceHelper.PerformSearchAsync(query);
 
             if (result != null)
             {
-                var refinedQuery = await _AzureOpenAIService.HandleQueryRefinement(query, result.Content);
+                var refinedQuery = await _externalServiceHelper.RefineSearchResultAsync(query, result.Content);
                 await stepContext.Context.SendActivityAsync(refinedQuery);
             }
 

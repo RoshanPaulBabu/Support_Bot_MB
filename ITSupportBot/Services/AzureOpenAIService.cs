@@ -29,7 +29,7 @@ namespace ITSupportBot.Services
             _HolidayService = holidayService;
         }
 
-        public async Task<(string, string)> HandleOpenAIResponseAsync(string userQuestion, List<ChatTransaction> chatHistory)
+        public async Task<(object, string, string)> HandleOpenAIResponseAsync(string userQuestion, List<ChatTransaction> chatHistory)
         {
             try
             {
@@ -108,7 +108,7 @@ namespace ITSupportBot.Services
                     "Refines user input related to company policies into a clear query optimized for Azure Search AI.",
                     BinaryData.FromString(jsonSchemaQuery)
                 );
-
+ 
                 var leaveTool = ChatTool.CreateFunctionTool(
                     "createLeave",
                     "Collects leave request details from the user and creates a leave record.",
@@ -174,83 +174,23 @@ namespace ITSupportBot.Services
                     {
                         var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, string>>();
 
-                        switch (toolCall.FunctionName)
-                        {
-                            case "createSupportTicket":
-                                var title = inputData.GetValueOrDefault("title");
-                                var description = inputData.GetValueOrDefault("description");
-                                var ticketId = Guid.NewGuid().ToString();
-
-                                await _TicketService.SaveTicketAsync(title, description, ticketId);
-                                chatHistory.Add(new ChatTransaction("Your support ticket has been created successfully!", userQuestion));
-                                return (ticketId, toolCall.FunctionName);
-
-                            case "refine_query":
-                                var query = inputData.GetValueOrDefault("query");
-                                return (query, toolCall.FunctionName);
-
-                            case "createLeave":
-                                var empID = inputData.GetValueOrDefault("empID");
-                                var empName = inputData.GetValueOrDefault("empName");
-                                var leaveType = inputData.GetValueOrDefault("leaveType");
-                                var startDate = inputData.GetValueOrDefault("startDate");
-                                var endDate = inputData.GetValueOrDefault("endDate");
-                                var reason = inputData.GetValueOrDefault("reason");
-                                var leaveId = Guid.NewGuid().ToString();
-
-                                await _LeaveService.SaveLeaveAsync(empID, empName, leaveType, startDate, endDate, reason, leaveId);
-                                chatHistory.Add(new ChatTransaction("Your leave request has been successfully submitted!", userQuestion));
-                                return (empID, "Your leave request has been submitted successfully and is pending approval, you can check it using your employee id: ");
-
-
-                            case "GetLeaveStatus":
-                                var emplID = inputData.GetValueOrDefault("empID");
-
-                                var empstatus = await _LeaveService.GetLatestLeaveStatusAsync(emplID);
-
-                                if (empstatus != null)
-                                {
-                                    chatHistory.Add(new ChatTransaction($"Succefully got the latest leave status, status {empstatus.Status.ToString()}", userQuestion));
-                                    return (empstatus.Status.ToString(), toolCall.FunctionName);
-                                }
-                                else
-                                {
-                                    return ("You doesnt have any leave applications or the emp id is incorrect", toolCall.FunctionName);
-                                }
-
-
-                            case "GetHolidaysAfterDate":
-                                var Date = inputData.GetValueOrDefault("startDate");
-
-                                var holidays = await _HolidayService.GetHolidaysAfterDateAsync(Date);
-
-                                if (holidays.Count == 0)
-                                {
-                                    chatHistory.Add(new ChatTransaction($"No holidays found after {Date:yyyy-MM-dd}.", userQuestion));
-                                    return ($"No holidays found after {Date:yyyy-MM-dd}.", toolCall.FunctionName);
-                                }
-                                // Format the list of holidays as a string
-                                var holidayList = string.Join("\r\n", holidays.Select(h => $"{h.HolidayName} on {h.Date:yyyy-MM-dd}"));
-                                return ($"Holidays after {Date:yyyy-MM-dd}:\r\n{holidayList}", toolCall.FunctionName);
-
-
-                        }
+                        return (inputData, toolCall.FunctionName, null);
                     }
                 }
 
                 // Default response
                 var response = completion.Content[0]?.Text ?? "I'm unable to process your request at this time.";
                 chatHistory.Add(new ChatTransaction(response, userQuestion));
-                return (response, null);
+                return (null, null, response);
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in HandleOpenAIResponseAsync: {ex.Message}");
-                return ("An error occurred while processing your request. Please try again.", null);
+                return (null, null, "An error occurred while processing your request. Please try again.");
             }
         }
 
-public async Task<string> HandleQueryRefinement(string userQuery, string result)
+public async Task<string> HandleSearchResultRefinement(string userQuery, string result)
         {
             try
             {
