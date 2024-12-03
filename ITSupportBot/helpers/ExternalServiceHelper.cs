@@ -1,11 +1,14 @@
 ﻿using ITSupportBot.Models;
 using ITSupportBot.Services;
+using Microsoft.Azure.Cosmos.Linq;
+using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace ITSupportBot.Helpers
@@ -29,81 +32,103 @@ namespace ITSupportBot.Helpers
             _HolidayService = holidayService;
         }
 
-public async Task<(string response, string functionName)> HandleOpenAIResponseAsync(string input, List<ChatTransaction> chatHistory)
-{
-    // Call Azure OpenAI Service
-    var (inputData, functionName, directResponse) = await _azureOpenAIService.HandleOpenAIResponseAsync(input, chatHistory);
+        public async Task<(string response, string functionName, Attachment)> HandleOpenAIResponseAsync(string input, List<ChatTransaction> chatHistory, ITurnContext turnContext)
+        {
+            // Call Azure OpenAI Service
+            var (inputData, functionName, directResponse) = await _azureOpenAIService.HandleOpenAIResponseAsync(input, chatHistory);
 
-    // If a direct response exists, return it
-    if (!string.IsNullOrEmpty(directResponse))
-    {
-        chatHistory.Add(new ChatTransaction(directResponse, input));
-        return (directResponse, null);
-    }
-
-    var inputDictionary = inputData as Dictionary<string, string>;
-
-    // Handle tool-based responses
-    switch (functionName)
-    {
-        case "createSupportTicket":
-            var title = inputDictionary.GetValueOrDefault("title");
-            var description = inputDictionary.GetValueOrDefault("description");
-            var ticketId = Guid.NewGuid().ToString();
-
-            await _ticketService.SaveTicketAsync(title, description, ticketId);
-            var ticketResponse = $"Your support ticket has been created successfully! Ticket ID: {ticketId}";
-            chatHistory.Add(new ChatTransaction(ticketResponse, input));
-            return (ticketId, functionName);
-
-        case "refine_query":
-            var query = inputDictionary.GetValueOrDefault("query");
-            return (query, functionName);
-
-        case "createLeave":
-            var empID = inputDictionary.GetValueOrDefault("empID");
-            var empName = inputDictionary.GetValueOrDefault("empName");
-            var leaveType = inputDictionary.GetValueOrDefault("leaveType");
-            var startDate = inputDictionary.GetValueOrDefault("startDate");
-            var endDate = inputDictionary.GetValueOrDefault("endDate");
-            var reason = inputDictionary.GetValueOrDefault("reason");
-            var leaveId = Guid.NewGuid().ToString();
-
-            await _LeaveService.SaveLeaveAsync(empID, empName, leaveType, startDate, endDate, reason, leaveId);
-            var leaveResponse = "Your leave request has been submitted successfully and is pending approval.";
-            chatHistory.Add(new ChatTransaction(leaveResponse, input));
-            return (empID, "Your leave request has been submitted successfully and is pending approval, you can check it using your employee id: ");
-
-        case "GetLeaveStatus":
-            var empId = inputDictionary.GetValueOrDefault("empID");
-            var leaveStatus = await _LeaveService.GetLatestLeaveStatusAsync(empId);
-
-            if (leaveStatus != null)
+            // If a direct response exists, return it
+            if (!string.IsNullOrEmpty(directResponse))
             {
-                chatHistory.Add(new ChatTransaction($"Latest Leave Status: {leaveStatus.Status}", input));
-                return (leaveStatus.Status, functionName);
+                return (directResponse, null, null);
             }
 
-            return ("No leave applications found or invalid Employee ID.", functionName);
+            var inputDictionary = inputData as Dictionary<string, string>;
 
-        case "GetHolidaysAfterDate":
-            var Date = inputDictionary.GetValueOrDefault("startDate");
-            var holidays = await _HolidayService.GetHolidaysAfterDateAsync(Date);
-
-            if (!holidays.Any())
+            // Handle tool-based responses
+            switch (functionName)
             {
-                var noHolidayMessage = $"No holidays found after {Date}.";
-                chatHistory.Add(new ChatTransaction(noHolidayMessage, input));
-                return (noHolidayMessage, functionName);
+                case "createSupportTicket":
+                    var Name = turnContext.TurnState.Get<string>("TeamsUserName") ?? "Default User"; // User's display name
+                    var Email = turnContext.TurnState.Get<string>("TeamsUserEmail") ?? "default@example.com"; // User's email
+                    var title = inputDictionary.GetValueOrDefault("title");
+                    var description = inputDictionary.GetValueOrDefault("description");
+                    var ticketId = Guid.NewGuid().ToString();
+
+                    await _ticketService.SaveTicketAsync(Name, Email, title, description, ticketId);
+                    var ticketResponse = $"Your support ticket has been created successfully! Ticket ID: {ticketId}";
+                    chatHistory.Add(new ChatTransaction(ticketResponse, input));
+                    return (ticketId, functionName, null);
+
+                case "refine_query":
+                    var query = inputDictionary.GetValueOrDefault("query");
+                    return (query, functionName, null);
+
+                case "createLeave":
+                    // Retrieve Teams user info from TurnState
+                    //var empID = turnContext.TurnState.Get<string>("TeamsUserId"); // Use Azure AD Object ID as empID
+                    var empName = turnContext.TurnState.Get<string>("TeamsUserName") ?? "Default User"; // User's display name
+                    var email = turnContext.TurnState.Get<string>("TeamsUserEmail") ?? "default@example.com"; // User's email
+
+                    // Extract leave details from inputDictionary
+                    var leaveType = inputDictionary.GetValueOrDefault("leaveType");
+                    var startDate = inputDictionary.GetValueOrDefault("startDate");
+                    var endDate = inputDictionary.GetValueOrDefault("endDate");
+                    var reason = inputDictionary.GetValueOrDefault("reason");
+                    var leaveId = Guid.NewGuid().ToString();
+
+                    // Save the leave request
+                    await _LeaveService.SaveLeaveAsync(email, empName, leaveType, startDate, endDate, reason, leaveId);
+
+                    // Return response
+                    var leaveResponse = "Your leave request has been submitted successfully and is pending approval.";
+                    chatHistory.Add(new ChatTransaction(leaveResponse, input));
+                    return (email, functionName, null);
+
+
+                case "GetLeaveStatus":
+                    var empId = turnContext.TurnState.Get<string>("TeamsUserEmail") ?? "default@example.com";
+                    var leaveStatus = await _LeaveService.GetLatestLeaveStatusAsync(empId);
+
+                    if (leaveStatus != null)
+                    {
+                        chatHistory.Add(new ChatTransaction($"Latest Leave Status: {leaveStatus.Status}", input));
+
+                        var adaptiveCardAttachment = CreateAdaptiveCardAttachment(
+                        "leaveDetailsCard.json",
+                        new Dictionary<string, string>
+                        {
+                                                                { "RowKey", leaveStatus.RowKey },
+                                                                { "CreatedAt", leaveStatus.CreatedAt.ToString("f") },
+                                                                { "Status", leaveStatus.Status },
+                                                                { "LeaveType", leaveStatus.LeaveType },
+                                                                { "StartDate", leaveStatus.StartDate.ToString("d") },
+                                                                { "EndDate", leaveStatus.EndDate.ToString("d") },
+                                                                { "Reason", leaveStatus.Reason }
+                        });
+                        return (null, functionName, adaptiveCardAttachment);
+                    }
+
+                    return ("No leave applications found.", functionName, null);
+
+                case "GetHolidaysAfterDate":
+                    var Date = inputDictionary.GetValueOrDefault("startDate");
+                    var holidays = await _HolidayService.GetHolidaysAfterDateAsync(Date);
+
+                    if (!holidays.Any())
+                    {
+                        var noHolidayMessage = $"No holidays found after {Date}.";
+                        chatHistory.Add(new ChatTransaction(noHolidayMessage, input));
+                        return (noHolidayMessage, functionName, null);
+                    }
+
+                    var holidayList = string.Join("\n", holidays.Select(h => $"{h.HolidayName} on {h.Date:yyyy-MM-dd}"));
+                    return ($"Holidays:\n{holidayList}", functionName, null);
+
+                default:
+                    return ("Unknown operation requested.", functionName, null);
             }
-
-            var holidayList = string.Join("\n", holidays.Select(h => $"{h.HolidayName} on {h.Date:yyyy-MM-dd}"));
-            return ($"Holidays:\n{holidayList}", functionName);
-
-        default:
-            return ("Unknown operation requested.", functionName);
-    }
-}
+        }
 
 
         public async Task<Ticket> GetTicketAsync(string rowKey)

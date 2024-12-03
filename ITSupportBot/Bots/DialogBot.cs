@@ -2,7 +2,9 @@
 
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
+using Microsoft.Bot.Builder.Teams;
 using Microsoft.Bot.Schema;
+using Microsoft.Bot.Schema.Teams;
 using Microsoft.Extensions.Logging;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,8 +47,31 @@ namespace ITSupportBot.Bots
         {
             Logger.LogInformation("Running dialog with Message Activity.");
 
-            // Run the Dialog with the new message Activity.
+            // Retrieve Teams user information
+            var userId = turnContext.Activity.From.Id;
+            TeamsChannelAccount member = null;
+
+            try
+            {
+                member = await TeamsInfo.GetMemberAsync(turnContext, userId, cancellationToken);
+            }
+            catch (ErrorResponseException e)
+            {
+                // Handle error (e.g., user not found in the current team)
+                Logger.LogError($"Error retrieving Teams member info: {e.Message}");
+            }
+
+            // Pass user details to Dialog if needed
+            if (member != null)
+            {
+                turnContext.TurnState.Add("TeamsUserEmail", member.Email);
+                turnContext.TurnState.Add("TeamsUserName", member.Name);
+                turnContext.TurnState.Add("TeamsUserId", member.AadObjectId); // Azure AD Object ID
+            }
+
+            // Run the Dialog with the new message Activity
             await Dialog.RunAsync(turnContext, ConversationState.CreateProperty<DialogState>("DialogState"), cancellationToken);
         }
+
     }
 }

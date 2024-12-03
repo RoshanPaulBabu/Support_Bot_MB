@@ -8,6 +8,7 @@
     using System.Threading.Tasks;
     using ITSupportBot.Models; // Assuming the updated ChatTransaction class is here
     using System.Linq;
+using Microsoft.Recognizers.Text;
 
 
 namespace ITSupportBot.Services
@@ -36,7 +37,7 @@ namespace ITSupportBot.Services
                 // Initialize OpenAI client
                 var apiKeyCredential = new System.ClientModel.ApiKeyCredential(_configuration["AzureOpenAIKey"]);
                 var client = new AzureOpenAIClient(new Uri(_configuration["AzureOpenAIEndpoint"]), apiKeyCredential);
-                var chatClient = client.GetChatClient("gpt-35-turbo");
+                var chatClient = client.GetChatClient("gpt-35-turbo-16k");
 
                 // Define JSON schemas for various tools
                 string jsonSchemaTicket = @"
@@ -44,7 +45,7 @@ namespace ITSupportBot.Services
                     ""type"": ""object"",
                     ""properties"": {
                         ""title"": { ""type"": ""string"", ""description"": ""Title of the issue provided by the user."" },
-                        ""description"": { ""type"": ""string"", ""description"": ""Detailed issue description provided by the user."" }
+                        ""description"": { ""type"": ""string"", ""description"": ""A comprehensive description of the issue or problem the user is facing."" }
                     },
                     ""required"": [""title"", ""description""]
                 }";
@@ -62,24 +63,12 @@ namespace ITSupportBot.Services
                 {
                     ""type"": ""object"",
                     ""properties"": {
-                        ""empID"": { ""type"": ""string"", ""description"": ""Employee ID of the leave requester."" },
-                        ""empName"": { ""type"": ""string"", ""description"": ""Name of the employee."" },
                         ""leaveType"": { ""type"": ""string"", ""description"": ""Type of leave (earned, sick, Casual)."" },
                         ""startDate"": { ""type"": ""string"", ""format"": ""date"", ""description"": ""Leave start date in yyyy-MM-dd format."" },
                         ""endDate"": { ""type"": ""string"", ""format"": ""date"", ""description"": ""Leave end date in yyyy-MM-dd format."" },
                         ""reason"": { ""type"": ""string"", ""description"": ""Reason for the leave."" }
                     },
-                    ""required"": [""empID"", ""empName"", ""leaveType"", ""startDate"", ""endDate"", ""reason""]
-                }";
-
-
-                string jsonSchemaLeaveStatus = @"
-                {
-                    ""type"": ""object"",
-                    ""properties"": {
-                        ""empID"": { ""type"": ""string"", ""description"": ""Employee ID of the leave requester."" }
-                    },
-                    ""required"": [""empID""]
+                    ""required"": [""leaveType"", ""startDate"", ""endDate""]
                 }";
 
                 string jsonSchemaHolidayQuery = @"
@@ -89,17 +78,19 @@ namespace ITSupportBot.Services
                         ""startDate"": { 
                             ""type"": ""string"", 
                             ""format"": ""date"", 
-                            ""description"": ""The start date to fetch holidays from (YYYY-MM-DD)."" 
+                            ""description"": ""The start date (YYYY-MM-DD) to begin fetching holidays. Only use this tool when the user specifically requests information about holidays."" 
                         }
                     },
                     ""required"": [""startDate""]
-                }";
+                }
+                ";
 
 
-                // Define function tools
+                // Define function tools with specific behavior
                 var ticketTool = ChatTool.CreateFunctionTool(
                     "createSupportTicket",
-                    "Collects a detailed issue description from the user and creates a support ticket.",
+                    "Collects a detailed issue description from the user and creates a support ticket. " +
+                    "Ensure to confirm with the user before creating the ticket. Example: 'You are about to create a ticket with the following details. Is this correct?'",
                     BinaryData.FromString(jsonSchemaTicket)
                 );
 
@@ -108,46 +99,85 @@ namespace ITSupportBot.Services
                     "Refines user input related to company policies into a clear query optimized for Azure Search AI.",
                     BinaryData.FromString(jsonSchemaQuery)
                 );
- 
+
                 var leaveTool = ChatTool.CreateFunctionTool(
                     "createLeave",
-                    "Collects leave request details from the user and creates a leave record.",
+                    "Apply for leave by collecting leave details from the user. Ensure to handle natural language date inputs like 'today', 'tomorrow', or 'next Monday' based on the current date. " +
+                    "After collecting all required details ('leaveType', 'startDate', 'endDate', and 'reason'), confirm with the user: " +
+                    "'You are about to apply for leave with the following details. Is this correct?' before invoking the tool.",
                     BinaryData.FromString(jsonSchemaLeave)
                 );
 
                 var leaveStatusTool = ChatTool.CreateFunctionTool(
                     "GetLeaveStatus",
-                    "Get latest leave status.",
-                    BinaryData.FromString(jsonSchemaLeaveStatus)
+                    "Retrieves the status of leave requests. This tool can be invoked without requiring additional parameters."
                 );
 
                 var holidayQueryTool = ChatTool.CreateFunctionTool(
                     "GetHolidaysAfterDate",
-                    "Fetch a list of holidays after a specific date.",
+                    "Fetches a list of holidays starting from a specific date. Use this tool only when the user explicitly requests holiday-related information. Ensure the 'startDate' is provided.",
                     BinaryData.FromString(jsonSchemaHolidayQuery)
                 );
 
                 var chatOptions = new ChatCompletionOptions
                 {
-                    Tools = { ticketTool, queryTool, leaveTool, leaveStatusTool, holidayQueryTool },
-
+                    Tools = { ticketTool, queryTool, leaveTool, leaveStatusTool, holidayQueryTool }
                 };
 
 
                 // System message with clear role definition
-                var currentDateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+
+
+
+
+
+                var currentDateTimeWithDay = $"{DateTime.Now:yyyy-MM-dd HH:mm} ({DateTime.Now.DayOfWeek})";
+
 
                 var chatMessages = new List<ChatMessage>
                 {
                     new SystemChatMessage($@"
-                    You are a precise and structured assistant. Your tasks are:
-                    1. Collect detailed information to create support tickets without adding any data beyond what the user provides.
-                    2. Refine user queries related to company policies into optimized search queries for Azure Search AI.
-                    3. Collect all required parameters step-by-step for leave requests, ticket creation, or holiday queries.
-                    4. Get leave status by collecting employee ID without adding any data beyond what the user provides.
-                    5. Retrieve holiday details by collecting a start date and ensuring the date is provided in the correct format (YYYY-MM-DD).
-                    Today's date and time is {currentDateTime}. Adhere strictly to user-provided information and validate missing fields by asking directly.
-                    ")
+                        You are an intelligent assistant equipped with tools to handle user requests. Your primary task is to assist users by invoking the appropriate tools. Follow these guidelines to ensure correct and precise tool usage:
+
+                        1. Understand User Intent:
+                           - Determine the user's specific request and match it with the most suitable tool.
+                           - Avoid assumptions; ask clarifying questions to collect all required details.
+
+                        2. Parameter Validation:
+                           - Gather all required parameters for the selected tool.
+                           - Do not invoke a tool unless every required parameter is explicitly provided.
+                           - Always validate the user-provided information against the tool's schema.
+
+                        3. Natural Language Date Handling:
+                           - The current date and day are: {currentDateTimeWithDay}.
+                           - When users specify dates such as 'today', 'tomorrow', 'this Friday', or 'next Monday', calculate the exact dates based on the current date and day. Use this to populate date-related parameters accurately.
+
+                        4. Reprompt for Missing Information:
+                           - If any required parameter is missing or unclear, ask the user for that specific information.
+                           - Use clear, concise language to request missing data.
+
+                        5. Confirm Before Invoking Tools:
+                           - For 'createSupportTicket', after collecting 'title' and 'description', confirm with the user: 'You are about to create a support ticket with the following details. Is this correct?' 
+                             - If the user confirms, invoke the tool. If not, allow corrections.
+                           - For 'createLeave', after collecting 'leaveType', 'startDate', 'endDate', and 'reason', confirm with the user: 'You are about to apply for leave with the following details. Is this correct?' 
+                             - If the user confirms, invoke the tool. If not, allow corrections.
+
+                        6. Invoke Tools Once Ready:
+                           - Only invoke the tool when all required parameters are present.
+                           - Do not use placeholders or null values.
+
+                        7. Schema-Specific Behavior:
+                           - For 'refine_query', ensure the 'query' is clear and precise.
+                           - For 'GetHolidaysAfterDate', only invoke if the user explicitly requests holiday information, and ensure 'startDate' is provided.
+                           - For 'GetLeaveStatus', directly invoke the tool without requiring additional input.
+
+                        8. Handle Edge Cases:
+                           - If a user provides incomplete or ambiguous details, clarify before proceeding.
+                           - If the user switches topics mid-conversation, prioritize the most recent intent.
+
+                        Ensure precise tool invocations, adhering to the tool's schema and user needs.
+                        ")
+
 
                 };
 
@@ -163,6 +193,7 @@ namespace ITSupportBot.Services
 
                 // Add the current user question
                 chatMessages.Add(new UserChatMessage(userQuestion));
+                var chat = chatMessages.ToArray();
 
                 // Perform chat completion
                 ChatCompletion completion = await chatClient.CompleteChatAsync(chatMessages.ToArray(), chatOptions);

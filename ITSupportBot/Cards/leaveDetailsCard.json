@@ -1,0 +1,70 @@
+﻿{
+    "type": "AdaptiveCard",
+    "version": "1.3",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "Leave Status",
+            "weight": "Bolder",
+            "size": "Large"
+        },
+        {
+            "type": "FactSet",
+            "facts": [
+                {
+                    "title": "Leave ID:",
+                    "value": "${RowKey}"
+                },
+                {
+                    "title": "Created At:",
+                    "value": "${CreatedAt}"
+                },
+                {
+                    "title": "Status:",
+                    "value": "${Status}"
+                }
+            ]
+        },
+        {
+            "type": "ActionSet",
+            "actions": [
+                {
+                    "type": "Action.ToggleVisibility",
+                    "title": "Expand Details",
+                    "targetElements": [
+                        "expandedDetails"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "id": "expandedDetails",
+            "isVisible": false,
+            "items": [
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {
+                            "title": "Leave Type:",
+                            "value": "${LeaveType}"
+                        },
+                        {
+                            "title": "Start Date:",
+                            "value": "${StartDate}"
+                        },
+                        {
+                            "title": "End Date:",
+                            "value": "${EndDate}"
+                        },
+                        {
+                            "title": "Reason:",
+                            "value": "${Reason}"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json"
+}

@@ -2,6 +2,7 @@
 using ITSupportBot.Models;
 using System;
 using System.Threading.Tasks;
+using static Antlr4.Runtime.Atn.SemanticContext;
 
 namespace ITSupportBot.Services
 {
@@ -16,10 +17,12 @@ namespace ITSupportBot.Services
             _tableClient.CreateIfNotExists(); // Ensure the table exists
         }
 
-        public async Task SaveTicketAsync(string title, string description, string RowKey)
+        public async Task SaveTicketAsync(string empID, string empName, string title, string description, string RowKey)
         {
             var ticket = new Ticket("SupportTickets", RowKey)
             {
+                EmpID = empID,
+                EmpName = empName,
                 Title = title,
                 Description = description,
                 CreatedAt = DateTime.UtcNow

@@ -53,10 +53,5 @@ namespace ITSupportBot.Dialogs
 
             return await stepContext.EndDialogAsync(query, cancellationToken);
         }
-
-        private Task<DialogTurnResult> RefineSearchAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
-        {
-            return stepContext.EndDialogAsync(null, cancellationToken);
-        }
     }
 }

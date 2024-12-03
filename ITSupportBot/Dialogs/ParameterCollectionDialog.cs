@@ -55,7 +55,7 @@ namespace ITSupportBot.Dialogs
         else
         {
             // Send a message but then proceed with the dialog logic
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you today?"), cancellationToken);
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you?"), cancellationToken);
 
             // Explicitly return an EndOfTurn result, or continue the dialog
             return Dialog.EndOfTurn;
@@ -75,8 +75,7 @@ namespace ITSupportBot.Dialogs
             // Determine what to pass to HandleOpenAIResponseAsync
             string inputToAIService = card != null ? card.ToString() : userMessage;
 
-            var (response, functionName) = await _externalServiceHelper.HandleOpenAIResponseAsync(inputToAIService, userProfile.ChatHistory);
-            var LeaveResponse = $"{functionName}{response}";
+            var (response, functionName, attachment) = await _externalServiceHelper.HandleOpenAIResponseAsync(inputToAIService, userProfile.ChatHistory, stepContext.Context);
 
             if (functionName == "createSupportTicket")
             {
@@ -108,7 +107,7 @@ namespace ITSupportBot.Dialogs
                     return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
                 }
                 else {
-                    await stepContext.Context.SendActivityAsync(MessageFactory.Text($"Your leave request is {response}"), cancellationToken);
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment), cancellationToken);
                     return await stepContext.EndDialogAsync(null, cancellationToken);
                 }
                  
@@ -121,9 +120,9 @@ namespace ITSupportBot.Dialogs
 
             }
 
-            else if (!string.IsNullOrEmpty(functionName) && functionName.Contains("employee id"))
+            else if (functionName == "createLeave")
             {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{LeaveResponse}"), cancellationToken);
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"Your leave request has been submitted successfully and is pending approval."), cancellationToken);
                 // Begin the QnAHandlingDialog and pass the response as dialog options
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }

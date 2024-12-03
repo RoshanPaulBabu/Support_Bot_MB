@@ -8,6 +8,8 @@ namespace ITSupportBot.Models
     {
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
+        public string EmpID { get; set; }
+        public string EmpName { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
