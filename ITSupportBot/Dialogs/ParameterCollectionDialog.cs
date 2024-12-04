@@ -55,7 +55,7 @@ namespace ITSupportBot.Dialogs
         else
         {
             // Send a message but then proceed with the dialog logic
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you?"), cancellationToken);
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you, today?"), cancellationToken);
 
             // Explicitly return an EndOfTurn result, or continue the dialog
             return Dialog.EndOfTurn;

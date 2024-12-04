@@ -58,7 +58,7 @@
                                 {
                                     "type": "TextBlock",
                                     "text": "Title:",
-                                    "weight": "Bolder",
+                                    "weight": "bolder",
                                     "wrap": true
                                 }
                             ]

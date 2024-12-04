@@ -3,25 +3,81 @@
     "version": "1.3",
     "body": [
         {
+            "type": "Image",
+            "url": "https://i.postimg.cc/2S9qN0W3/Botangelos-white.png"
+        },
+        {
             "type": "TextBlock",
             "text": "Leave Status",
             "weight": "Bolder",
-            "size": "Large"
+            "size": "ExtraLarge",
+            "horizontalAlignment": "Center",
+            "spacing": "Small",
+            "color": "Accent",
+            "fontType": "Default"
         },
         {
             "type": "FactSet",
             "facts": [
                 {
-                    "title": "Leave ID:",
-                    "value": "${RowKey}"
-                },
-                {
                     "title": "Created At:",
                     "value": "${CreatedAt}"
+                }
+            ]
+        },
+        {
+            "type": "ColumnSet",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "Status:",
+                            "weight": "Bolder",
+                            "wrap": true,
+                            "spacing": "Medium"
+                        }
+                    ]
                 },
                 {
-                    "title": "Status:",
-                    "value": "${Status}"
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${StatusDisplay}",
+                            "wrap": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "stretch"
+                },
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "Leave Type:",
+                            "weight": "Bolder",
+                            "wrap": true
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": "${LeaveType}",
+                            "wrap": true
+                        }
+                    ]
                 }
             ]
         },
@@ -46,16 +102,8 @@
                     "type": "FactSet",
                     "facts": [
                         {
-                            "title": "Leave Type:",
-                            "value": "${LeaveType}"
-                        },
-                        {
-                            "title": "Start Date:",
-                            "value": "${StartDate}"
-                        },
-                        {
-                            "title": "End Date:",
-                            "value": "${EndDate}"
+                            "title": "Start & End Date:",
+                            "value": "${StartDate} to ${EndDate}"
                         },
                         {
                             "title": "Reason:",

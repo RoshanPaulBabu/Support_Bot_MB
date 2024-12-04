@@ -98,9 +98,9 @@ namespace ITSupportBot.Helpers
                         "leaveDetailsCard.json",
                         new Dictionary<string, string>
                         {
-                                                                { "RowKey", leaveStatus.RowKey },
                                                                 { "CreatedAt", leaveStatus.CreatedAt.ToString("f") },
                                                                 { "Status", leaveStatus.Status },
+                                                                { "StatusDisplay", GetStatusDisplay(leaveStatus.Status) },
                                                                 { "LeaveType", leaveStatus.LeaveType },
                                                                 { "StartDate", leaveStatus.StartDate.ToString("d") },
                                                                 { "EndDate", leaveStatus.EndDate.ToString("d") },
@@ -128,6 +128,17 @@ namespace ITSupportBot.Helpers
                 default:
                     return ("Unknown operation requested.", functionName, null);
             }
+        }
+
+        private string GetStatusDisplay(string status)
+        {
+            return status switch
+            {
+                "Approved" => "✅ Approved",
+                "Rejected" => "❌ Rejected",
+                "Pending" => "⏳ Pending",
+                _ => status // Fallback to original status if no match
+            };
         }
 
 

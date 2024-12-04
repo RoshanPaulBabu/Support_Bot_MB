@@ -4,11 +4,16 @@
     "type": "AdaptiveCard",
     "body": [
         {
+            "type": "Image",
+            "url": "https://i.postimg.cc/7YV5Yr6Z/Botangelos-black.png"
+        },
+        {
             "type": "Input.Text",
             "id": "title",
             "placeholder": "Enter the ticket title",
             "value": "${title}",
-            "spacing": "padding"
+            "spacing": "Padding",
+            "label": "Title: "
         },
         {
             "type": "Input.Text",
@@ -16,7 +21,8 @@
             "placeholder": "Enter the ticket description",
             "value": "${description}",
             "isMultiline": true,
-            "spacing": "Padding"
+            "spacing": "Padding",
+            "label": "Description: "
         },
         {
             "type": "Input.Text",
