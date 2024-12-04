@@ -71,19 +71,6 @@ namespace ITSupportBot.Services
                     ""required"": [""leaveType"", ""startDate"", ""endDate""]
                 }";
 
-                string jsonSchemaHolidayQuery = @"
-                {
-                    ""type"": ""object"",
-                    ""properties"": {
-                        ""startDate"": { 
-                            ""type"": ""string"", 
-                            ""format"": ""date"", 
-                            ""description"": ""The start date (YYYY-MM-DD) to begin fetching holidays. Only use this tool when the user specifically requests information about holidays."" 
-                        }
-                    },
-                    ""required"": [""startDate""]
-                }
-                ";
 
 
                 // Define function tools with specific behavior
@@ -115,8 +102,7 @@ namespace ITSupportBot.Services
 
                 var holidayQueryTool = ChatTool.CreateFunctionTool(
                     "GetHolidaysAfterDate",
-                    "Fetches a list of holidays starting from a specific date. Use this tool only when the user explicitly requests holiday-related information. Ensure the 'startDate' is provided.",
-                    BinaryData.FromString(jsonSchemaHolidayQuery)
+                    "Fetches a list of holidays . This tool can be invoked without requiring additional parameters.."
                 );
 
                 var chatOptions = new ChatCompletionOptions

@@ -11,6 +11,8 @@ using System.IO;
 using System.Net.Sockets;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using ITSupportBot.Helpers;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 namespace ITSupportBot.Dialogs
 {
     public class MainDialog : ComponentDialog
@@ -40,36 +42,59 @@ namespace ITSupportBot.Dialogs
 
         private async Task<DialogTurnResult> WelcomeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            var options = stepContext.Options as dynamic;
+            if (!string.IsNullOrEmpty(options?.Action))
+            {
+                // Pass the action value as a string to the next dialog
+                return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), new { Action = options?.Action }, cancellationToken);
+            }
             return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> AskForFurtherAssistanceStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            // Load the Adaptive Card
+            var adaptiveCard = File.ReadAllText("Cards/GreetingCard.json");
 
-            return await stepContext.PromptAsync(nameof(ChoicePrompt),
-                new PromptOptions
-                {
-                    Prompt = MessageFactory.Text("Is there anything else I can assist you with?"),
-                    Choices = ChoiceFactory.ToChoices(new List<string> { "Yes", "No" }),
-                }, cancellationToken);
+            // Send the Adaptive Card to the user
+            var response = new Attachment
+            {
+                ContentType = "application/vnd.microsoft.card.adaptive",
+                Content = JsonConvert.DeserializeObject(adaptiveCard)
+            };
+
+            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(response), cancellationToken);
+
+            return Dialog.EndOfTurn; // Wait for the user's response to the card actions
         }
 
         private async Task<DialogTurnResult> HandleFurtherAssistanceStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            // Retrieve the user's choice
-            var choice = ((FoundChoice)stepContext.Result).Value;
+            // Get the user's response
+            var value = stepContext.Context.Activity.Value as JObject;
 
-            if (choice == "Yes")
+            if (value != null && value.ContainsKey("action"))
             {
-                // Restart the dialog
-                return await stepContext.ReplaceDialogAsync(InitialDialogId, null, cancellationToken);
+                var action = value["action"].ToString();
+
+                if (action == "No")
+                {
+                    // End the dialogue if the user selects "No"
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Text("Thank you! Have a great day!"), cancellationToken);
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                }
+                else
+                {
+                    // Restart the dialog for any other action
+                    return await stepContext.ReplaceDialogAsync(InitialDialogId, new { Action = action }, cancellationToken);
+                }
             }
-            else
-            {
-                // Proceed to the thank-you message
-                return await stepContext.NextAsync(null, cancellationToken);
-            }
+
+            // Handle unexpected scenarios
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text("I couldn't understand your choice. Please try again."), cancellationToken);
+            return await stepContext.ReplaceDialogAsync(InitialDialogId, null, cancellationToken);
         }
+
 
         private async Task<DialogTurnResult> ThankYouStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {

@@ -1,0 +1,59 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.3",
+    "body": [
+        {
+            "type": "Image",
+            "url": "https://i.postimg.cc/7YV5Yr6Z/Botangelos-black.png",
+            "size": "Stretch",
+            "altText": "IT Support Bot"
+        },
+        {
+            "type": "TextBlock",
+            "spacing": "Medium",
+            "size": "Default",
+            "weight": "Bolder",
+            "text": "Is there anything else I can assist you with?",
+            "wrap": true,
+            "maxLines": 0
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Create Support Ticket",
+            "data": {
+                "action": "Create Support Ticket"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Sent Leave Application",
+            "data": {
+                "action": "Sent Leave Application"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Get Leave Status",
+            "data": {
+                "action": "Get Leave Status"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Get Holidays List",
+            "data": {
+                "action": "Get Holidays List"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "No",
+            "data": {
+                "action": "No"
+            }
+        }
+    ]
+}

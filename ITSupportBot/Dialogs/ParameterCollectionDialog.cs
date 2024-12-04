@@ -42,9 +42,12 @@ namespace ITSupportBot.Dialogs
 
         private async Task<DialogTurnResult> AskHelpQueryStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            var options = stepContext.Options as dynamic;
 
             if (stepContext.Options is string textResponse && !string.IsNullOrEmpty(textResponse))
+
             {
+
                 return await stepContext.PromptAsync(
                    nameof(TextPrompt),
                    new PromptOptions { Prompt = MessageFactory.Text(textResponse) },
@@ -52,12 +55,18 @@ namespace ITSupportBot.Dialogs
                );
 
             }
-        else
+
+            else if (!string.IsNullOrEmpty(options?.Action))
+            {
+                // Pass the action value as a string to the next dialog
+                return await stepContext.NextAsync(options?.Action, cancellationToken);
+            }
+
+            else
         {
             // Send a message but then proceed with the dialog logic
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you, today?"), cancellationToken);
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you?"), cancellationToken);
 
-            // Explicitly return an EndOfTurn result, or continue the dialog
             return Dialog.EndOfTurn;
         }
         }
