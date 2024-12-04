@@ -56,10 +56,15 @@ namespace ITSupportBot.Dialogs
 
             }
 
-            else if (!string.IsNullOrEmpty(options?.Action))
+            else if (options != null && (options.GetType().GetProperty("Action") != null))
             {
                 // Pass the action value as a string to the next dialog
                 return await stepContext.NextAsync(options?.Action, cancellationToken);
+            }
+            else if (options != null && (options.GetType().GetProperty("Message") != null))
+            {
+                // Pass the action value as a string to the next dialog
+                return await stepContext.NextAsync(options?.Message, cancellationToken);
             }
 
             else
@@ -111,9 +116,11 @@ namespace ITSupportBot.Dialogs
 
             else if (functionName == "GetLeaveStatus")
             {
-                 if (!string.IsNullOrEmpty(response) && response.Contains("invalid"))
+                 if (!string.IsNullOrEmpty(response))
                 {
-                    return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
+                    // Begin the QnAHandlingDialog and pass the response as dialog options
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
                 }
                 else {
                     await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment), cancellationToken);
@@ -124,8 +131,17 @@ namespace ITSupportBot.Dialogs
 
             else if (functionName == "GetHolidaysAfterDate")
             {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"{response}"), cancellationToken);
-                return await stepContext.EndDialogAsync(null, cancellationToken);
+                if (!string.IsNullOrEmpty(response))
+                {
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
+                    // Begin the QnAHandlingDialog and pass the response as dialog options
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                }
+                else
+                {
+                    await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment), cancellationToken);
+                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                }
 
             }
 

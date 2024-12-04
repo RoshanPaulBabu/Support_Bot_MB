@@ -1,0 +1,25 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.3",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "Upcoming Holidays",
+            "weight": "Bolder",
+            "size": "Medium",
+            "spacing": "Medium"
+        },
+        {
+            "type": "Container",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "${HolidayList}",
+                    "wrap": true,
+                    "spacing": "Small"
+                }
+            ]
+        }
+    ]
+}

@@ -112,18 +112,29 @@ namespace ITSupportBot.Helpers
                     return ("No leave applications found.", functionName, null);
 
                 case "GetHolidaysAfterDate":
-                    var Date = inputDictionary.GetValueOrDefault("startDate");
-                    var holidays = await _HolidayService.GetHolidaysAfterDateAsync(Date);
+                    var date = DateTime.Now.ToString("yyyy-MM-dd");
+                    var holidays = await _HolidayService.GetHolidaysAfterDateAsync(date);
 
                     if (!holidays.Any())
                     {
-                        var noHolidayMessage = $"No holidays found after {Date}.";
+                        var noHolidayMessage = $"No holidays found after {date}.";
                         chatHistory.Add(new ChatTransaction(noHolidayMessage, input));
                         return (noHolidayMessage, functionName, null);
                     }
 
+                    // Generate the holiday list string
                     var holidayList = string.Join("\n", holidays.Select(h => $"{h.HolidayName} on {h.Date:yyyy-MM-dd}"));
-                    return ($"Holidays:\n{holidayList}", functionName, null);
+
+                    // Create the adaptive card attachment
+                    var CardAttachment = CreateAdaptiveCardAttachment(
+                        "holidaysCard.json",
+                        new Dictionary<string, string>
+                        {
+                                 { "HolidayList", holidayList }
+                        });
+
+                    // Return the adaptive card
+                    return (null, functionName, CardAttachment);
 
                 default:
                     return ("Unknown operation requested.", functionName, null);

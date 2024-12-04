@@ -43,9 +43,12 @@ namespace ITSupportBot.Dialogs
         private async Task<DialogTurnResult> WelcomeStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             var options = stepContext.Options as dynamic;
-            if (!string.IsNullOrEmpty(options?.Action))
+            if (options != null && (options.GetType().GetProperty("Message") != null))
             {
-                // Pass the action value as a string to the next dialog
+                return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), new { options?.Message }, cancellationToken);
+            }
+            else if (options != null && (options.GetType().GetProperty("Action") != null))
+            {
                 return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), new { Action = options?.Action }, cancellationToken);
             }
             return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), null, cancellationToken);
@@ -72,6 +75,7 @@ namespace ITSupportBot.Dialogs
         {
             // Get the user's response
             var value = stepContext.Context.Activity.Value as JObject;
+            string message = (string)stepContext.Result;
 
             if (value != null && value.ContainsKey("action"))
             {
@@ -79,8 +83,6 @@ namespace ITSupportBot.Dialogs
 
                 if (action == "No")
                 {
-                    // End the dialogue if the user selects "No"
-                    await stepContext.Context.SendActivityAsync(MessageFactory.Text("Thank you! Have a great day!"), cancellationToken);
                     return await stepContext.EndDialogAsync(null, cancellationToken);
                 }
                 else
@@ -89,9 +91,14 @@ namespace ITSupportBot.Dialogs
                     return await stepContext.ReplaceDialogAsync(InitialDialogId, new { Action = action }, cancellationToken);
                 }
             }
+            else if (!string.IsNullOrEmpty(message))
+            {
+                return await stepContext.ReplaceDialogAsync(InitialDialogId, new { Message = message }, cancellationToken);
 
-            // Handle unexpected scenarios
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text("I couldn't understand your choice. Please try again."), cancellationToken);
+            }
+
+                // Handle unexpected scenarios
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text("I couldn't understand your choice. Please try again."), cancellationToken);
             return await stepContext.ReplaceDialogAsync(InitialDialogId, null, cancellationToken);
         }
 
