@@ -37,7 +37,7 @@ namespace ITSupportBot.Services
                 // Initialize OpenAI client
                 var apiKeyCredential = new System.ClientModel.ApiKeyCredential(_configuration["AzureOpenAIKey"]);
                 var client = new AzureOpenAIClient(new Uri(_configuration["AzureOpenAIEndpoint"]), apiKeyCredential);
-                var chatClient = client.GetChatClient("gpt-35-turbo-16k");
+                var chatClient = client.GetChatClient("gpt-4o");
 
                 // Define JSON schemas for various tools
                 string jsonSchemaTicket = @"
@@ -101,7 +101,7 @@ namespace ITSupportBot.Services
                 );
 
                 var holidayQueryTool = ChatTool.CreateFunctionTool(
-                    "GetHolidaysAfterDate",
+                    "GetHolidaysList",
                     "Fetches a list of holidays . This tool can be invoked without requiring additional parameters.."
                 );
 
@@ -122,49 +122,18 @@ namespace ITSupportBot.Services
 
                 var chatMessages = new List<ChatMessage>
                 {
-                    new SystemChatMessage($@"
-                        You are an intelligent assistant equipped with tools to handle user requests. Your primary task is to assist users by invoking the appropriate tools. Follow these guidelines to ensure correct and precise tool usage:
+    new SystemChatMessage($@"
+        You are an intelligent assistant equipped with tools to handle user requests. The current date and day are: {currentDateTimeWithDay}.
 
-                        1. Understand User Intent:
-                           - Determine the user's specific request and match it with the most suitable tool.
-                           - Avoid assumptions; ask clarifying questions to collect all required details.
+        Follow these essential guidelines:
+        1. **Understand User Intent:** Match the user's request with the appropriate tool and ask clarifying questions if required.
+        2. **Validate Parameters:** Ensure all required parameters are provided. Do not invoke tools with placeholders or null values.
+        3. **Confirm Actions:** Before invoking tools like 'createSupportTicket' or 'createLeave', confirm details with the user: 'You are about to [action]. Is this correct?'
+        4. **Handle Edge Cases:** Address ambiguous or incomplete details by reprompting for clarity. Prioritize the most recent user intent if topics shift.
+        5. **Schema Adherence:** Follow the schema requirements strictly for each tool.
 
-                        2. Parameter Validation:
-                           - Gather all required parameters for the selected tool.
-                           - Do not invoke a tool unless every required parameter is explicitly provided.
-                           - Always validate the user-provided information against the tool's schema.
-
-                        3. Natural Language Date Handling:
-                           - The current date and day are: {currentDateTimeWithDay}.
-                           - When users specify dates such as 'today', 'tomorrow', 'this Friday', or 'next Monday', calculate the exact dates based on the current date and day. Use this to populate date-related parameters accurately.
-
-                        4. Reprompt for Missing Information:
-                           - If any required parameter is missing or unclear, ask the user for that specific information.
-                           - Use clear, concise language to request missing data.
-
-                        5. Confirm Before Invoking Tools:
-                           - For 'createSupportTicket', after collecting 'title' and 'description', confirm with the user: 'You are about to create a support ticket with the following details. Is this correct?' 
-                             - If the user confirms, invoke the tool. If not, allow corrections.
-                           - For 'createLeave', after collecting 'leaveType', 'startDate', 'endDate', and 'reason', confirm with the user: 'You are about to apply for leave with the following details. Is this correct?' 
-                             - If the user confirms, invoke the tool. If not, allow corrections.
-
-                        6. Invoke Tools Once Ready:
-                           - Only invoke the tool when all required parameters are present.
-                           - Do not use placeholders or null values.
-
-                        7. Schema-Specific Behavior:
-                           - For 'refine_query', ensure the 'query' is clear and precise.
-                           - For 'GetHolidaysAfterDate', only invoke if the user explicitly requests holiday information, and ensure 'startDate' is provided.
-                           - For 'GetLeaveStatus', directly invoke the tool without requiring additional input.
-
-                        8. Handle Edge Cases:
-                           - If a user provides incomplete or ambiguous details, clarify before proceeding.
-                           - If the user switches topics mid-conversation, prioritize the most recent intent.
-
-                        Ensure precise tool invocations, adhering to the tool's schema and user needs.
-                        ")
-
-
+        Use precise and concise language for all interactions, ensuring seamless user experience and accurate tool invocations."
+    )
                 };
 
 

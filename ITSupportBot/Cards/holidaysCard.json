@@ -4,20 +4,34 @@
     "version": "1.3",
     "body": [
         {
-            "type": "TextBlock",
-            "text": "Upcoming Holidays",
-            "weight": "Bolder",
-            "size": "Medium",
-            "spacing": "Medium"
+            "type": "Container",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "Upcoming Holidays",
+                    "weight": "Bolder",
+                    "size": "Large"
+                }
+            ]
         },
         {
             "type": "Container",
             "items": [
                 {
-                    "type": "TextBlock",
-                    "text": "${HolidayList}",
-                    "wrap": true,
-                    "spacing": "Small"
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${HolidayList}",
+                                    "wrap": true
+                                }
+                            ]
+                        }
+                    ]
                 }
             ]
         }

@@ -111,7 +111,7 @@ namespace ITSupportBot.Helpers
 
                     return ("No leave applications found.", functionName, null);
 
-                case "GetHolidaysAfterDate":
+                case "GetHolidaysList":
                     var date = DateTime.Now.ToString("yyyy-MM-dd");
                     var holidays = await _HolidayService.GetHolidaysAfterDateAsync(date);
 
@@ -122,8 +122,10 @@ namespace ITSupportBot.Helpers
                         return (noHolidayMessage, functionName, null);
                     }
 
-                    // Generate the holiday list string
-                    var holidayList = string.Join("\n", holidays.Select(h => $"{h.HolidayName} on {h.Date:yyyy-MM-dd}"));
+                    var holidayList = string.Join("\n", holidays.Select(h =>
+                        $"**{h.HolidayName.Replace("*", "").Trim()}**    -- {h.Date:dddd, MMMM dd, yyyy}\r\r"));
+
+
 
                     // Create the adaptive card attachment
                     var CardAttachment = CreateAdaptiveCardAttachment(

@@ -129,7 +129,12 @@ namespace ITSupportBot.Dialogs
                  
             }
 
-            else if (functionName == "GetHolidaysAfterDate")
+            else if (functionName == "GetHolidaysList")
+
+
+
+
+
             {
                 if (!string.IsNullOrEmpty(response))
                 {
