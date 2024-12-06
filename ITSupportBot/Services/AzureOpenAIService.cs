@@ -91,7 +91,8 @@ namespace ITSupportBot.Services
                     "createLeave",
                     "Apply for leave by collecting leave details from the user. Ensure to handle natural language date inputs like 'today', 'tomorrow', or 'next Monday' based on the current date. " +
                     "After collecting all required details ('leaveType', 'startDate', 'endDate', and 'reason'), confirm with the user: " +
-                    "'You are about to apply for leave with the following details. Is this correct?' before invoking the tool.",
+                    "'You are about to apply for leave with the following details. Is this correct?' before invoking the tool."+
+                    "Example: If the user says, 'I'm not feeling well, apply for a leave,' respond with: 'It seems you need a sick leave, and the reason is that you're not feeling well. Could you please specify the start and end dates for your leave?' Once the user provides dates, confirm the details before submission.",
                     BinaryData.FromString(jsonSchemaLeave)
                 );
 

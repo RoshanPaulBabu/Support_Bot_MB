@@ -1,4 +1,5 @@
-﻿using ITSupportBot.Models;
+﻿using AdaptiveCards;
+using ITSupportBot.Models;
 using ITSupportBot.Services;
 using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Bot.Builder;
@@ -112,31 +113,14 @@ namespace ITSupportBot.Helpers
                     return ("No leave applications found.", functionName, null);
 
                 case "GetHolidaysList":
-                    var date = DateTime.Now.ToString("yyyy-MM-dd");
+                    var date = DateTime.UtcNow.ToString("yyyy-MM-dd");
                     var holidays = await _HolidayService.GetHolidaysAfterDateAsync(date);
 
-                    if (!holidays.Any())
-                    {
-                        var noHolidayMessage = $"No holidays found after {date}.";
-                        chatHistory.Add(new ChatTransaction(noHolidayMessage, input));
-                        return (noHolidayMessage, functionName, null);
-                    }
-
-                    var holidayList = string.Join("\n", holidays.Select(h =>
-                        $"**{h.HolidayName.Replace("*", "").Trim()}**    -- {h.Date:dddd, MMMM dd, yyyy}\r\r"));
-
-
-
-                    // Create the adaptive card attachment
-                    var CardAttachment = CreateAdaptiveCardAttachment(
-                        "holidaysCard.json",
-                        new Dictionary<string, string>
-                        {
-                                 { "HolidayList", holidayList }
-                        });
+                    // Create the Adaptive Card
+                    var holidaysCardAttachment = CreateHolidaysAdaptiveCardAsync(holidays);
 
                     // Return the adaptive card
-                    return (null, functionName, CardAttachment);
+                    return (null, functionName, holidaysCardAttachment);
 
                 default:
                     return ("Unknown operation requested.", functionName, null);
@@ -207,6 +191,105 @@ namespace ITSupportBot.Helpers
                     Content = JsonConvert.DeserializeObject(adaptiveCard, new JsonSerializerSettings { MaxDepth = null }),
                 };
             }
+        }
+
+        public Attachment CreateHolidaysAdaptiveCardAsync(List<Holiday> holidays)
+        {
+            // Create a new Adaptive Card
+            var card = new AdaptiveCard(new AdaptiveSchemaVersion(1, 3))
+            {
+                Body = new List<AdaptiveElement>()
+            };
+
+            // Add Heading
+            card.Body.Add(new AdaptiveTextBlock
+            {
+                Text = "Upcoming Holidays",
+                Size = AdaptiveTextSize.Large,
+                Weight = AdaptiveTextWeight.Bolder,
+                Spacing = AdaptiveSpacing.Large
+            });
+
+            // Create a table column set
+            var columnSet = new AdaptiveColumnSet();
+
+            // Define columns
+            var holidayNameColumn = new AdaptiveColumn
+            {
+                Width = "stretch",
+                Items = new List<AdaptiveElement>
+        {
+            new AdaptiveTextBlock
+            {
+                Text = "**Holiday**",
+                Weight = AdaptiveTextWeight.Bolder
+            }
+        }
+            };
+
+            var holidayDateColumn = new AdaptiveColumn
+            {
+                Width = "stretch",
+                Items = new List<AdaptiveElement>
+        {
+            new AdaptiveTextBlock
+            {
+                Text = "**Date**",
+                Weight = AdaptiveTextWeight.Bolder
+            }
+        }
+            };
+
+            // Add header columns
+            columnSet.Columns = new List<AdaptiveColumn> { holidayNameColumn, holidayDateColumn };
+            card.Body.Add(columnSet);
+
+            // Populate rows dynamically
+            foreach (var holiday in holidays)
+            {
+                var rowColumnSet = new AdaptiveColumnSet();
+
+                var nameColumn = new AdaptiveColumn
+                {
+                    Width = "stretch",
+                    Items = new List<AdaptiveElement>
+            {
+                new AdaptiveTextBlock
+                {
+                    Text = holiday.HolidayName,
+                    Wrap = true
+                }
+            }
+                };
+
+                var dateColumn = new AdaptiveColumn
+                {
+                    Width = "stretch",
+                    Items = new List<AdaptiveElement>
+            {
+                new AdaptiveTextBlock
+                {
+                    Text = holiday.Date.ToString("dddd, MMMM dd, yyyy"),
+                    Wrap = true
+                }
+            }
+                };
+
+                rowColumnSet.Columns = new List<AdaptiveColumn> { nameColumn, dateColumn };
+                card.Body.Add(rowColumnSet);
+            }
+
+            // Add a fallback text for accessibility
+            card.FallbackText = "List of Holidays";
+
+            // Create the attachment
+            var attachment = new Attachment
+            {
+                ContentType = AdaptiveCard.ContentType,
+                Content = card
+            };
+
+            return attachment;
         }
     }
 }

@@ -73,6 +73,16 @@ namespace ITSupportBot.Dialogs
 
         private async Task<DialogTurnResult> HandleFurtherAssistanceStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
+            // Get the user profile
+            var userProfile = await _userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfile(), cancellationToken);
+
+            // Ensure ChatHistory is initialized if it's null
+            userProfile.ChatHistory ??= new List<ChatTransaction>();
+
+            // Perform dialog steps here...
+
+            // Clear chat history after dialog set finishes
+            userProfile.ChatHistory.Clear();
             // Get the user's response
             var value = stepContext.Context.Activity.Value as JObject;
             string message = (string)stepContext.Result;
@@ -83,7 +93,7 @@ namespace ITSupportBot.Dialogs
 
                 if (action == "No")
                 {
-                    return await stepContext.EndDialogAsync(null, cancellationToken);
+                    return await stepContext.NextAsync(null, cancellationToken);
                 }
                 else
                 {

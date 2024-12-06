@@ -13,7 +13,6 @@ namespace ITSupportBot.Services
 {
     public class AzureSearchService
     {
-        private readonly SearchClient _searchClient;
         private readonly IConfiguration _configuration;
 
         public AzureSearchService(IConfiguration configuration)

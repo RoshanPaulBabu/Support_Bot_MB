@@ -130,11 +130,6 @@ namespace ITSupportBot.Dialogs
             }
 
             else if (functionName == "GetHolidaysList")
-
-
-
-
-
             {
                 if (!string.IsNullOrEmpty(response))
                 {
