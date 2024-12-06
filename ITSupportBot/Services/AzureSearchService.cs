@@ -50,7 +50,8 @@ namespace ITSupportBot.Services
 
                 return new SearchResult
                 {
-                    Content = firstResult.Document.TryGetValue("content", out var content) ? content.ToString() : null
+                    Content = firstResult.Document.TryGetValue("content", out var content) ? content.ToString() : null,
+                    metadata_storage_name = firstResult.Document.TryGetValue("metadata_storage_name", out var metadata_storage_name) ? metadata_storage_name.ToString() : null,
                 };
             }
 
@@ -62,6 +63,7 @@ namespace ITSupportBot.Services
     public class SearchResult
     {
         public string Content { get; set; }
+        public string metadata_storage_name { get; set; }
 
     }
 }

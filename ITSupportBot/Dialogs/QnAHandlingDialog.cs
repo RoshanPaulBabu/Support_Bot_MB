@@ -42,8 +42,12 @@ namespace ITSupportBot.Dialogs
 
             if (result != null)
             {
-                var refinedQuery = await _externalServiceHelper.RefineSearchResultAsync(query, result.Content);
-                await stepContext.Context.SendActivityAsync(refinedQuery);
+                var refinedResult = await _externalServiceHelper.RefineSearchResultAsync(query, result.Content);
+                var encodedFileName = Uri.EscapeDataString(result.metadata_storage_name);
+                var fileLink = $"https://supportbotdb.blob.core.windows.net/companypolicies/{encodedFileName}";
+
+                await stepContext.Context.SendActivityAsync(refinedResult);
+                await stepContext.Context.SendActivityAsync(fileLink);
             }
 
             else
