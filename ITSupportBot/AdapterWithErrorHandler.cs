@@ -1,5 +1,7 @@
 ﻿// Generated with Bot Builder V4 SDK Template for Visual Studio CoreBot v4.22.0
 
+using AdaptiveCards.Rendering;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Builder.TraceExtensions;
@@ -47,6 +49,8 @@ namespace ITSupportBot
                 // Send a trace activity, which will be displayed in the Bot Framework Emulator
                 await turnContext.TraceActivityAsync("OnTurnError Trace", exception.Message, "https://www.botframework.com/schemas/error", "TurnError");
             };
+
+            Use(new ShowTypingMiddleware());
         }
     }
 }

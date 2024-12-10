@@ -93,19 +93,8 @@ namespace ITSupportBot.Dialogs
 
             if (functionName == "createSupportTicket")
             {
-                var ticket = await _externalServiceHelper.GetTicketAsync(response);
-                var adaptiveCardAttachment = _externalServiceHelper.CreateAdaptiveCardAttachment(
-                    "ticketCreationCard.json",
-                    new Dictionary<string, string>
-                    {
-                        { "title", ticket.Title },
-                        { "description", ticket.Description },
-                        { "createdAt", ticket.CreatedAt.ToString("MM/dd/yyyy HH:mm") },
-                        { "ticketId", ticket.RowKey }
-                    });
-
-                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(adaptiveCardAttachment), cancellationToken);
-                stepContext.Values["rowKey"] = ticket.RowKey;
+                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(attachment), cancellationToken);
+                stepContext.Values["rowKey"] = response;
                 return Dialog.EndOfTurn;
             }
             else if (functionName == "refine_query")
@@ -225,40 +214,6 @@ namespace ITSupportBot.Dialogs
 
             return await stepContext.EndDialogAsync(null, cancellationToken);
         }
-
-        private Attachment CreateAdaptiveCardAttachment(string cardFileName, Dictionary<string, string> placeholders)
-        {
-            // Locate the resource path for the card file
-            var resourcePath = GetType().Assembly.GetManifestResourceNames()
-                                .FirstOrDefault(name => name.EndsWith(cardFileName, StringComparison.OrdinalIgnoreCase));
-
-            if (resourcePath == null)
-            {
-                throw new FileNotFoundException($"The specified card file '{cardFileName}' was not found as an embedded resource.");
-            }
-
-            using (var stream = GetType().Assembly.GetManifestResourceStream(resourcePath))
-            using (var reader = new StreamReader(stream))
-            {
-                // Read the card template
-                var adaptiveCard = reader.ReadToEnd();
-
-                // Replace placeholders dynamically
-                foreach (var placeholder in placeholders)
-                {
-                    adaptiveCard = adaptiveCard.Replace($"${{{placeholder.Key}}}", placeholder.Value);
-                }
-
-                // Return the populated adaptive card as an attachment
-                return new Attachment
-                {
-                    ContentType = "application/vnd.microsoft.card.adaptive",
-                    Content = Newtonsoft.Json.JsonConvert.DeserializeObject(adaptiveCard, new JsonSerializerSettings { MaxDepth = null }),
-                };
-            }
-        }
-
-
     }
 
 }

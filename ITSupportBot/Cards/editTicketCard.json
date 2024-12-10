@@ -4,10 +4,6 @@
     "type": "AdaptiveCard",
     "body": [
         {
-            "type": "Image",
-            "url": "https://i.postimg.cc/7YV5Yr6Z/Botangelos-black.png"
-        },
-        {
             "type": "Input.Text",
             "id": "title",
             "placeholder": "Enter the ticket title",

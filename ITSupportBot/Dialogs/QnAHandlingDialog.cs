@@ -46,8 +46,7 @@ namespace ITSupportBot.Dialogs
                 var encodedFileName = Uri.EscapeDataString(result.metadata_storage_name);
                 var fileLink = $"https://supportbotdb.blob.core.windows.net/companypolicies/{encodedFileName}";
 
-                await stepContext.Context.SendActivityAsync(refinedResult);
-                await stepContext.Context.SendActivityAsync(fileLink);
+                await stepContext.Context.SendActivityAsync($"{refinedResult}\n\n[Click here to access the file]({fileLink})");
             }
 
             else

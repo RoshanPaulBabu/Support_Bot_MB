@@ -76,8 +76,7 @@ namespace ITSupportBot.Services
                 // Define function tools with specific behavior
                 var ticketTool = ChatTool.CreateFunctionTool(
                     "createSupportTicket",
-                    "Collects a detailed issue description from the user and creates a support ticket. " +
-                    "Ensure to confirm with the user before creating the ticket. Example: 'You are about to create a ticket with the following details. Is this correct?'",
+                    "Collects a detailed issue description from the user and creates a support ticket. ",
                     BinaryData.FromString(jsonSchemaTicket)
                 );
 
@@ -129,7 +128,7 @@ namespace ITSupportBot.Services
         Follow these essential guidelines:
         1. **Understand User Intent:** Match the user's request with the appropriate tool and ask clarifying questions if required.
         2. **Validate Parameters:** Ensure all required parameters are provided. Do not invoke tools with placeholders or null values.
-        3. **Confirm Actions:** Before invoking tools like 'createSupportTicket' or 'createLeave', confirm details with the user: 'You are about to [action]. Is this correct?'
+        3. **Confirm Actions:** Before invoking 'createLeave' tool, confirm details with the user: 'You are about to [action]. Is this correct?'
         4. **Handle Edge Cases:** Address ambiguous or incomplete details by reprompting for clarity. Prioritize the most recent user intent if topics shift.
         5. **Schema Adherence:** Follow the schema requirements strictly for each tool.
 

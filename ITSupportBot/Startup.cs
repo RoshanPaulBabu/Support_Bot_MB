@@ -65,6 +65,7 @@ namespace ITSupportBot
             services.AddSingleton<AzureSearchService>();
 
             services.AddSingleton<ExternalServiceHelper>();
+            services.AddSingleton<AdaptiveCardHelper>();
 
             services.AddSingleton(provider =>
             {

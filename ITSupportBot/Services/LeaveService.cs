@@ -38,24 +38,19 @@ namespace ITSupportBot.Services
             await _tableClient.AddEntityAsync(leave);
         }
 
-        public async Task<Leave> GetLatestLeaveStatusAsync(string empID)
+        public async Task<IEnumerable<Leave>> GetLeaveRecordsAsync(string empID)
         {
             try
             {
                 // Fetch all leave records for the given EmpID
                 var leaveRecords = new List<Leave>();
-
                 await foreach (var leave in _tableClient.QueryAsync<Leave>(leave => leave.EmpID == empID))
                 {
                     leaveRecords.Add(leave);
                 }
 
-                // Find the latest leave by sorting in memory
-                var latestLeave = leaveRecords
-                    .OrderByDescending(leave => leave.CreatedAt)
-                    .FirstOrDefault();
-
-                return latestLeave;
+                // Order the records by CreatedAt in descending order
+                return leaveRecords.OrderByDescending(leave => leave.CreatedAt);
             }
             catch (RequestFailedException ex)
             {
@@ -64,5 +59,6 @@ namespace ITSupportBot.Services
                 throw;
             }
         }
+     
     }
 }
