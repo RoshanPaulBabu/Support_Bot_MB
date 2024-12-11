@@ -42,7 +42,8 @@ namespace ITSupportBot.Dialogs
 
             if (result != null)
             {
-                var refinedResult = await _externalServiceHelper.RefineSearchResultAsync(query, result.Content);
+                string queryResult = $"User query: {query}, Azure Search Result: {result.Content}";
+                var refinedResult = await _externalServiceHelper.RefineSearchResultAsync(queryResult);
                 var encodedFileName = Uri.EscapeDataString(result.metadata_storage_name);
                 var fileLink = $"https://supportbotdb.blob.core.windows.net/companypolicies/{encodedFileName}";
 

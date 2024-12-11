@@ -176,7 +176,7 @@ namespace ITSupportBot.Services
             }
         }
 
-public async Task<string> HandleSearchResultRefinement(string userQuery, string result)
+public async Task<string> HandleSearchResultRefinement(string queryresult, string sysMessage)
         {
             try
             {
@@ -187,13 +187,14 @@ public async Task<string> HandleSearchResultRefinement(string userQuery, string 
 
                 var chatMessages = new List<ChatMessage>
                 {
-                    new SystemChatMessage("You are a search refinement AI. Your task is to analyze user queries and refine search results to deliver precise and actionable insights.")
+                    new SystemChatMessage(sysMessage),
+                    new UserChatMessage(queryresult)
                 };
 
 
-                chatMessages.Add(new UserChatMessage(userQuery, result));
 
                 ChatCompletion completion = await chatClient.CompleteChatAsync(chatMessages.ToArray());
+                var result = completion;
 
                 string response = completion.Content[0]?.Text ?? "I'm unable to process your request at this time.";
 

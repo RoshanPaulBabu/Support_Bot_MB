@@ -18,14 +18,16 @@ namespace ITSupportBot.Dialogs
     {
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
         private readonly ExternalServiceHelper _externalServiceHelper;
+        private readonly AdaptiveCardHelper _AdaptiveCardHelper;
 
 
-        public ParameterCollectionDialog(ExternalServiceHelper ExternalServiceHelper, IStatePropertyAccessor<UserProfile> userProfileAccessor
+        public ParameterCollectionDialog(ExternalServiceHelper ExternalServiceHelper, IStatePropertyAccessor<UserProfile> userProfileAccessor, AdaptiveCardHelper AdaptiveCardHelper
             )
             : base(nameof(ParameterCollectionDialog))
         {
             _userProfileAccessor = userProfileAccessor;
             _externalServiceHelper = ExternalServiceHelper;
+            _AdaptiveCardHelper = AdaptiveCardHelper;
 
             var waterfallSteps = new WaterfallStep[]
             {
@@ -69,8 +71,9 @@ namespace ITSupportBot.Dialogs
 
             else
         {
-            // Send a message but then proceed with the dialog logic
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text("Hello! How can I help you?"), cancellationToken);
+                var adaptiveCard = _AdaptiveCardHelper.CreateAdaptiveCardAttachment("welcomeCard.json", null);
+
+                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(adaptiveCard), cancellationToken);
 
             return Dialog.EndOfTurn;
         }
@@ -109,6 +112,7 @@ namespace ITSupportBot.Dialogs
                 {
                     await stepContext.Context.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
                     // Begin the QnAHandlingDialog and pass the response as dialog options
+                    
                     return await stepContext.EndDialogAsync(null, cancellationToken);
                 }
                 else {

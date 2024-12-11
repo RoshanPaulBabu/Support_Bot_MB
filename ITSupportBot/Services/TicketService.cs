@@ -17,7 +17,8 @@ namespace ITSupportBot.Services
             _tableClient.CreateIfNotExists(); // Ensure the table exists
         }
 
-        public async Task SaveTicketAsync(string empID, string empName, string title, string description, string RowKey)
+        public async Task SaveTicketAsync(string empID, string empName, string title, string description, string RowKey
+            )
         {
             var ticket = new Ticket("SupportTickets", RowKey)
             {

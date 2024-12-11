@@ -14,7 +14,7 @@
             "spacing": "Medium",
             "size": "Default",
             "weight": "Bolder",
-            "text": "Is there anything else I can assist you with?",
+            "text": "Is there anything I can assist you with?",
             "wrap": true,
             "maxLines": 0
         }
@@ -46,13 +46,6 @@
             "title": "Get Holidays List",
             "data": {
                 "action": "Get Holidays List"
-            }
-        },
-        {
-            "type": "Action.Submit",
-            "title": "No",
-            "data": {
-                "action": "No"
             }
         }
     ]

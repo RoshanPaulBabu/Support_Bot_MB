@@ -31,7 +31,7 @@ namespace ITSupportBot.Bots
                 {
                     var welcomeCard = CreateAdaptiveCardAttachment();
                     var response = MessageFactory.Attachment(welcomeCard, ssml: "Welcome to Bot Framework!");
-                    await turnContext.SendActivityAsync(response, cancellationToken);
+                    //await turnContext.SendActivityAsync(response, cancellationToken);
                     await Dialog.RunAsync(turnContext, ConversationState.CreateProperty<DialogState>("DialogState"), cancellationToken);
                 }
             }

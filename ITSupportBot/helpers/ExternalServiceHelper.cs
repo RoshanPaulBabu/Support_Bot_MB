@@ -4,13 +4,18 @@ using ITSupportBot.Services;
 using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
+using Microsoft.SqlServer.Server;
 using Newtonsoft.Json;
+using OpenAI.Assistants;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.ServiceModel.Channels;
 using System.Threading.Tasks;
+using static Antlr4.Runtime.Atn.SemanticContext;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace ITSupportBot.Helpers
 {
@@ -81,6 +86,7 @@ namespace ITSupportBot.Helpers
 
                 case "refine_query":
                     var query = inputDictionary.GetValueOrDefault("query");
+                    chatHistory.Add(new ChatTransaction("Succefully refined the query", input));
                     return (query, functionName, null);
 
 
@@ -119,6 +125,7 @@ namespace ITSupportBot.Helpers
 
                     // Generate the categorized leave status card with hidden sections
                     var categorizedCard = _AdaptiveCardHelper.GenerateCategorizedLeaveStatusCard(leaveRecords);
+                    chatHistory.Add(new ChatTransaction("Successfully generated the leave status", input));
 
                     // Return the adaptive card
                     return (null, functionName, categorizedCard);
@@ -135,6 +142,7 @@ namespace ITSupportBot.Helpers
 
                     // Create the Adaptive Card
                     var holidaysCardAttachment = _AdaptiveCardHelper.CreateHolidaysAdaptiveCardAsync(holidays);
+                    chatHistory.Add(new ChatTransaction("Successfully listed the holidays", input));
 
                     // Return the adaptive card
                     return (null, functionName, holidaysCardAttachment);
@@ -176,9 +184,24 @@ namespace ITSupportBot.Helpers
 
 
         // Query refinement using OpenAI
-        public async Task<string> RefineSearchResultAsync(string originalQuery, string searchResultContent)
+        public async Task<string> RefineSearchResultAsync(string queryresult)
         {
-            return await _azureOpenAIService.HandleSearchResultRefinement(originalQuery, searchResultContent);
+            string sysMessage = "You are a search refinement AI. Your task is to analyze user queries and refine search results to deliver precise and actionable insights.";
+            return await _azureOpenAIService.HandleSearchResultRefinement(queryresult, sysMessage);
+        }
+
+        public async Task<string> IndentHandlingAsync(string response)
+        {
+            string sysMessage = """
+            Classify user messages into two categories:
+            1.Ending the conversation: Messages that indicate the user is concluding the interaction(e.g., "thank you," "okay," "bye," "got it").
+            2.Service - related or other queries: Messages where the user is asking for services, making inquiries, or seeking further assistance.
+
+            Respond with the following JSON format:
+            -If the message indicates the end of the conversation: { "response": "YES"}
+            -If the message is a service - related query or anything else: { "response": "SERVICE"}
+            """;
+            return await _azureOpenAIService.HandleSearchResultRefinement(response, sysMessage);
         }
 
     }

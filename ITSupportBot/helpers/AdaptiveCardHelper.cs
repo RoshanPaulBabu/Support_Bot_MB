@@ -12,7 +12,7 @@ namespace ITSupportBot.Helpers
 {
     public class AdaptiveCardHelper
     {
-        public Attachment CreateAdaptiveCardAttachment(string cardFileName, Dictionary<string, string> placeholders)
+        public Attachment CreateAdaptiveCardAttachment(string cardFileName, Dictionary<string, string> placeholders = null)
         {
             // Locate the resource path for the card file
             var resourcePath = GetType().Assembly.GetManifestResourceNames()
@@ -29,10 +29,13 @@ namespace ITSupportBot.Helpers
                 // Read the card template
                 var adaptiveCard = reader.ReadToEnd();
 
-                // Replace placeholders dynamically
-                foreach (var placeholder in placeholders)
+                // Replace placeholders dynamically if provided
+                if (placeholders != null)
                 {
-                    adaptiveCard = adaptiveCard.Replace($"${{{placeholder.Key}}}", placeholder.Value);
+                    foreach (var placeholder in placeholders)
+                    {
+                        adaptiveCard = adaptiveCard.Replace($"${{{placeholder.Key}}}", placeholder.Value);
+                    }
                 }
 
                 // Return the populated adaptive card as an attachment
@@ -59,38 +62,41 @@ namespace ITSupportBot.Helpers
                 Text = "Leave Status",
                 Weight = AdaptiveTextWeight.Bolder,
                 Size = AdaptiveTextSize.Large
-            }
-        },
+            },
+            new AdaptiveActionSet
+            {
                 Actions = new List<AdaptiveAction>
-        {
-            new AdaptiveToggleVisibilityAction
-            {
-                Title = "Pending ⏳",
-                TargetElements = new List<AdaptiveTargetElement>
                 {
-                    new AdaptiveTargetElement { ElementId = "PendingSection" }
-                }
-            },
-            new AdaptiveToggleVisibilityAction
-            {
-                Title = "Approved ✅",
-                TargetElements = new List<AdaptiveTargetElement>
-                {
-                    new AdaptiveTargetElement { ElementId = "ApprovedSection" }
-                }
-            },
-            new AdaptiveToggleVisibilityAction
-            {
-                Title = "Rejected ❌",
-                TargetElements = new List<AdaptiveTargetElement>
-                {
-                    new AdaptiveTargetElement { ElementId = "RejectedSection" }
+                    new AdaptiveToggleVisibilityAction
+                    {
+                        Title = "Pending ⏳",
+                        TargetElements = new List<AdaptiveTargetElement>
+                        {
+                            new AdaptiveTargetElement { ElementId = "PendingSection" }
+                        }
+                    },
+                    new AdaptiveToggleVisibilityAction
+                    {
+                        Title = "Approved ✅",
+                        TargetElements = new List<AdaptiveTargetElement>
+                        {
+                            new AdaptiveTargetElement { ElementId = "ApprovedSection" }
+                        }
+                    },
+                    new AdaptiveToggleVisibilityAction
+                    {
+                        Title = "Rejected ❌",
+                        TargetElements = new List<AdaptiveTargetElement>
+                        {
+                            new AdaptiveTargetElement { ElementId = "RejectedSection" }
+                        }
+                    }
                 }
             }
         }
             };
 
-            // Add categorized sections
+            // Add categorized sections after the toggle buttons
             AddLeaveSection(card, "PendingSection", "**Pending Leaves**", pendingLeaves);
             AddLeaveSection(card, "ApprovedSection", "**Approved Leaves**", approvedLeaves);
             AddLeaveSection(card, "RejectedSection", "**Rejected Leaves**", rejectedLeaves);
@@ -101,6 +107,7 @@ namespace ITSupportBot.Helpers
                 Content = card
             };
         }
+
 
 
 

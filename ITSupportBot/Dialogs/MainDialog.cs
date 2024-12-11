@@ -19,15 +19,18 @@ namespace ITSupportBot.Dialogs
     {
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
         private readonly ExternalServiceHelper _externalServiceHelper;
+        private readonly AdaptiveCardHelper _AdaptiveCardHelper;
 
-        public MainDialog(UserState userState, ExternalServiceHelper ExternalServiceHelper)
+        public MainDialog(UserState userState, ExternalServiceHelper ExternalServiceHelper, AdaptiveCardHelper AdaptiveCardHelper)
         : base(nameof(MainDialog))
         {
             _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
             _externalServiceHelper = ExternalServiceHelper;
+            _AdaptiveCardHelper = AdaptiveCardHelper;
 
             var waterfallSteps = new WaterfallStep[]
         {   WelcomeStepAsync,
+            FurtherIndentStepAsync,
             AskForFurtherAssistanceStepAsync,
             HandleFurtherAssistanceStepAsync,
             ThankYouStepAsync
@@ -35,7 +38,7 @@ namespace ITSupportBot.Dialogs
 
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
             AddDialog(new QnAHandlingDialog(_externalServiceHelper));
-            AddDialog(new ParameterCollectionDialog( _externalServiceHelper, _userProfileAccessor));
+            AddDialog(new ParameterCollectionDialog( _externalServiceHelper, _userProfileAccessor, _AdaptiveCardHelper));
             AddDialog(new ChoicePrompt(nameof(ChoicePrompt)));
             InitialDialogId = nameof(WaterfallDialog);
         }
@@ -54,22 +57,48 @@ namespace ITSupportBot.Dialogs
             return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), null, cancellationToken);
         }
 
+        private async Task<DialogTurnResult> FurtherIndentStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        {
+
+            await stepContext.Context.SendActivityAsync(MessageFactory.Text(" "), cancellationToken);
+
+            return Dialog.EndOfTurn; 
+        }
+
         private async Task<DialogTurnResult> AskForFurtherAssistanceStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            // Load the Adaptive Card
-            var adaptiveCard = File.ReadAllText("Cards/GreetingCard.json");
+            // Retrieve the user query (response from the previous step)
+            string userMessage = (string)stepContext.Result;
 
-            // Send the Adaptive Card to the user
-            var response = new Attachment
+            var indent = await _externalServiceHelper.IndentHandlingAsync(userMessage);
+
+            var jsonObject = JObject.Parse(indent);
+
+            // Extract the response value
+            string responseValue = jsonObject["response"].ToString();
+
+            if (responseValue == "YES")
             {
-                ContentType = "application/vnd.microsoft.card.adaptive",
-                Content = JsonConvert.DeserializeObject(adaptiveCard)
+                var adaptiveCard = File.ReadAllText("Cards/GreetingCard.json");
+
+                // Send the Adaptive Card to the user
+                var response = new Attachment
+                {
+                    ContentType = "application/vnd.microsoft.card.adaptive",
+                    Content = JsonConvert.DeserializeObject(adaptiveCard)
+                };
+
+                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(response), cancellationToken);
+                return Dialog.EndOfTurn; // Wait for the user's response to the card actions
+
             };
+            // Load the Adaptive Card
 
-            await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(response), cancellationToken);
+            return await stepContext.NextAsync(null, cancellationToken);
 
-            return Dialog.EndOfTurn; // Wait for the user's response to the card actions
         }
+
+
 
         private async Task<DialogTurnResult> HandleFurtherAssistanceStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -85,25 +114,22 @@ namespace ITSupportBot.Dialogs
             userProfile.ChatHistory.Clear();
             // Get the user's response
             var value = stepContext.Context.Activity.Value as JObject;
-            string message = (string)stepContext.Result;
+            string message = stepContext.Context.Activity.AsMessageActivity().Text;
+
+            userProfile.ChatHistory.Add(new ChatTransaction("Is there anything I can assist you with? ", null));
+
 
             if (value != null && value.ContainsKey("action"))
             {
                 var action = value["action"].ToString();
-
-                if (action == "No")
-                {
-                    return await stepContext.NextAsync(null, cancellationToken);
-                }
-                else
-                {
                     // Restart the dialog for any other action
-                    return await stepContext.ReplaceDialogAsync(InitialDialogId, new { Action = action }, cancellationToken);
-                }
+                return await stepContext.ReplaceDialogAsync(InitialDialogId, new { Action = action }, cancellationToken);
             }
+
             else if (!string.IsNullOrEmpty(message))
             {
                 return await stepContext.ReplaceDialogAsync(InitialDialogId, new { Message = message }, cancellationToken);
+
 
             }
 
