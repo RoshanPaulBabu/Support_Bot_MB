@@ -11,6 +11,7 @@ using System.IO;
 using Newtonsoft.Json;
 using System.Linq;
 using ITSupportBot.Helpers;
+using System.Net.Mail;
 
 namespace ITSupportBot.Dialogs
 {
@@ -47,14 +48,12 @@ namespace ITSupportBot.Dialogs
             var options = stepContext.Options as dynamic;
 
             if (stepContext.Options is string textResponse && !string.IsNullOrEmpty(textResponse))
-
             {
 
-                return await stepContext.PromptAsync(
-                   nameof(TextPrompt),
-                   new PromptOptions { Prompt = MessageFactory.Text(textResponse) },
-                   cancellationToken
-               );
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text(textResponse), cancellationToken);
+
+
+                return Dialog.EndOfTurn;
 
             }
 
@@ -162,18 +161,14 @@ namespace ITSupportBot.Dialogs
                 // Fetch ticket using rowKey
                 var ticket = await _externalServiceHelper.GetTicketAsync(rowKey.ToString());  // Pass the rowKey here
 
-                // Proceed with the rest of the logic after ticket is fetched
-                string editCardJson = File.ReadAllText("Cards/editTicketCard.json");
-
-                editCardJson = editCardJson.Replace("${title}", ticket.Title)
-                   .Replace("${description}", ticket.Description)
-                   .Replace("${ticketId}", ticket.RowKey);  // Use RowKey here
-
-                var editCardAttachment = new Attachment
+                var editCardAttachment = _AdaptiveCardHelper.CreateAdaptiveCardAttachment(
+                "editTicketCard.json",
+                new Dictionary<string, string>
                 {
-                    ContentType = "application/vnd.microsoft.card.adaptive",
-                    Content = Newtonsoft.Json.JsonConvert.DeserializeObject(editCardJson)
-                };
+                                                                            { "title", ticket.Title },
+                                                                            { "description", ticket.Description },
+                                                                            { "ticketId", ticket.RowKey }
+                });
 
                 await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(editCardAttachment), cancellationToken);
                 return Dialog.EndOfTurn;

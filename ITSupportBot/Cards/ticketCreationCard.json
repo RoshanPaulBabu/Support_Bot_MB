@@ -151,7 +151,7 @@
         },
         {
             "type": "Action.Submit",
-            "title": "Confirm",
+            "title": "Confirm and Create Ticket",
             "data": {
                 "action": "confirm"
             },

@@ -30,7 +30,7 @@
     "actions": [
         {
             "type": "Action.Submit",
-            "title": "Save"
+            "title": "Create Ticket"
         }
     ]
 }

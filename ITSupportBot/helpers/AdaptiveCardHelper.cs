@@ -49,52 +49,226 @@ namespace ITSupportBot.Helpers
 
         public Attachment GenerateCategorizedLeaveStatusCard(IEnumerable<Leave> leaveRecords)
         {
-            var pendingLeaves = leaveRecords.Where(l => l.Status == "Pending");
-            var approvedLeaves = leaveRecords.Where(l => l.Status == "Approved");
-            var rejectedLeaves = leaveRecords.Where(l => l.Status == "Rejected");
+            var pendingLeaves = leaveRecords.Where(l => l.Status == "Pending").ToList();
+            var approvedLeaves = leaveRecords.Where(l => l.Status == "Approved").ToList();
+            var rejectedLeaves = leaveRecords.Where(l => l.Status == "Rejected").ToList();
 
             var card = new AdaptiveCard("1.3")
             {
                 Body = new List<AdaptiveElement>
+    {
+new AdaptiveTextBlock
+{
+    Text = "Leave Status",
+    Weight = AdaptiveTextWeight.Bolder,
+    Size = AdaptiveTextSize.Large
+},
+
+// Add buttons in a single line using AdaptiveColumnSet
+new AdaptiveColumnSet
+{
+    Columns = new List<AdaptiveColumn>
+    {
+        // Pending Buttons Column
+        new AdaptiveColumn
         {
-            new AdaptiveTextBlock
+            Items = new List<AdaptiveElement>
             {
-                Text = "Leave Status",
-                Weight = AdaptiveTextWeight.Bolder,
-                Size = AdaptiveTextSize.Large
-            },
-            new AdaptiveActionSet
-            {
-                Actions = new List<AdaptiveAction>
+                // Pending Button Container
+                new AdaptiveContainer
                 {
-                    new AdaptiveToggleVisibilityAction
+                    Id = "PendingButtonContainer",
+                    IsVisible = false,
+                    Items = new List<AdaptiveElement>
                     {
-                        Title = "Pending ⏳",
-                        TargetElements = new List<AdaptiveTargetElement>
+                        new AdaptiveActionSet
                         {
-                            new AdaptiveTargetElement { ElementId = "PendingSection" }
+                            Actions = new List<AdaptiveAction>
+                            {
+                                new AdaptiveToggleVisibilityAction
+                                {
+                                    Title = "Pending ⏳",
+                                    TargetElements = new List<AdaptiveTargetElement>
+                                    {
+                                        new AdaptiveTargetElement { ElementId = "PendingSection", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "RejectedSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedActiveContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "PendingActiveContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "PendingButtonContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "RejectedActiveContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "RejectedButtonContainer", IsVisible = true }
+                                    }
+                                }
+                            }
                         }
-                    },
-                    new AdaptiveToggleVisibilityAction
+                    }
+                },
+                // Pending Active Container
+                new AdaptiveContainer
+                {
+                    Id = "PendingActiveContainer",
+                    IsVisible = true,
+                    Items = new List<AdaptiveElement>
                     {
-                        Title = "Approved ✅",
-                        TargetElements = new List<AdaptiveTargetElement>
+                        new AdaptiveActionSet
                         {
-                            new AdaptiveTargetElement { ElementId = "ApprovedSection" }
-                        }
-                    },
-                    new AdaptiveToggleVisibilityAction
-                    {
-                        Title = "Rejected ❌",
-                        TargetElements = new List<AdaptiveTargetElement>
-                        {
-                            new AdaptiveTargetElement { ElementId = "RejectedSection" }
+                            Actions = new List<AdaptiveAction>
+                            {
+                                new AdaptiveToggleVisibilityAction
+                                {
+                                    Title = "Pending⏳",
+                                    Style = "positive",
+                                    TargetElements = new List<AdaptiveTargetElement>
+                                    {
+                                        new AdaptiveTargetElement { ElementId = "PendingSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "PendingButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "PendingActiveContainer", IsVisible = false }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
+            },
+            Width = "auto"
+        },
+        // Approved Buttons Column
+        new AdaptiveColumn
+        {
+            Items = new List<AdaptiveElement>
+            {
+                // Approved Button Container
+                new AdaptiveContainer
+                {
+                    Id = "ApprovedButtonContainer",
+                    Items = new List<AdaptiveElement>
+                    {
+                        new AdaptiveActionSet
+                        {
+                            Actions = new List<AdaptiveAction>
+                            {
+                                new AdaptiveToggleVisibilityAction
+                                {
+                                    Title = "Approved ✅",
+                                    TargetElements = new List<AdaptiveTargetElement>
+                                    {
+                                        new AdaptiveTargetElement { ElementId = "ApprovedSection", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "PendingSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "RejectedSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedButtonContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedActiveContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "PendingActiveContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "PendingButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "RejectedActiveContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "RejectedButtonContainer", IsVisible = true }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                // Approved Active Container
+                new AdaptiveContainer
+                {
+                    Id = "ApprovedActiveContainer",
+                    IsVisible = false,
+                    Items = new List<AdaptiveElement>
+                    {
+                        new AdaptiveActionSet
+                        {
+                            Actions = new List<AdaptiveAction>
+                            {
+                                new AdaptiveToggleVisibilityAction
+                                {
+                                    Title = "Approved ✅",
+                                    Style = "positive",
+                                    TargetElements = new List<AdaptiveTargetElement>
+                                    {
+                                        new AdaptiveTargetElement { ElementId = "ApprovedSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedActiveContainer", IsVisible = false }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            Width = "auto"
+        },
+        // Rejected Buttons Column
+        new AdaptiveColumn
+        {
+            Items = new List<AdaptiveElement>
+            {
+                // Rejected Button Container
+                new AdaptiveContainer
+                {
+                    Id = "RejectedButtonContainer",
+                    Items = new List<AdaptiveElement>
+                    {
+                        new AdaptiveActionSet
+                        {
+                            Actions = new List<AdaptiveAction>
+                            {
+                                new AdaptiveToggleVisibilityAction
+                                {
+                                    Title = "Rejected ❌",
+                                    TargetElements = new List<AdaptiveTargetElement>
+                                    {
+                                        new AdaptiveTargetElement { ElementId = "RejectedSection", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "PendingSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "ApprovedActiveContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "PendingActiveContainer", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "PendingButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "RejectedActiveContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "RejectedButtonContainer", IsVisible = false }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                // Rejected Active Container
+                new AdaptiveContainer
+                {
+                    Id = "RejectedActiveContainer",
+                    IsVisible = false,
+                    Items = new List<AdaptiveElement>
+                    {
+                        new AdaptiveActionSet
+                        {
+                            Actions = new List<AdaptiveAction>
+                            {
+                                new AdaptiveToggleVisibilityAction
+                                {
+                                    Title = "Rejected ❌",
+                                    Style = "positive",
+                                    TargetElements = new List<AdaptiveTargetElement>
+                                    {
+                                        new AdaptiveTargetElement { ElementId = "RejectedSection", IsVisible = false },
+                                        new AdaptiveTargetElement { ElementId = "RejectedButtonContainer", IsVisible = true },
+                                        new AdaptiveTargetElement { ElementId = "RejectedActiveContainer", IsVisible = false }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            Width = "auto"
         }
+    }
+}
+      
+            }
+
             };
+
 
             // Add categorized sections after the toggle buttons
             AddLeaveSection(card, "PendingSection", "**Pending Leaves**", pendingLeaves);
@@ -118,7 +292,7 @@ namespace ITSupportBot.Helpers
             var section = new AdaptiveContainer
             {
                 Id = sectionId,
-                IsVisible = false,
+                IsVisible = sectionId == "PendingSection", 
                 Items = new List<AdaptiveElement>
         {
             new AdaptiveTextBlock

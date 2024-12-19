@@ -44,8 +44,14 @@ namespace ITSupportBot.Services
                 {
                     ""type"": ""object"",
                     ""properties"": {
-                        ""title"": { ""type"": ""string"", ""description"": ""Title of the issue provided by the user."" },
-                        ""description"": { ""type"": ""string"", ""description"": ""A comprehensive description of the issue or problem the user is facing."" }
+                        ""title"": {
+                            ""type"": ""string"",
+                            ""description"": ""Automatically generated concise title summarizing the user's issue.""
+                        },
+                        ""description"": {
+                            ""type"": ""string"",
+                            ""description"": ""A comprehensive description of the issue, including context and details provided by the user.""
+                        }
                     },
                     ""required"": [""title"", ""description""]
                 }";
@@ -73,12 +79,12 @@ namespace ITSupportBot.Services
 
 
 
-                // Define function tools with specific behavior
                 var ticketTool = ChatTool.CreateFunctionTool(
                     "createSupportTicket",
-                    "Collects a detailed issue description from the user and creates a support ticket. ",
+                    "Collects a detailed issue description from the user, extracts a title and description dynamically, and creates a support ticket.",
                     BinaryData.FromString(jsonSchemaTicket)
                 );
+
 
                 var queryTool = ChatTool.CreateFunctionTool(
                     "refine_query",

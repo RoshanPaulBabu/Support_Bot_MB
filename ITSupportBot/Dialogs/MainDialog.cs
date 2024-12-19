@@ -47,6 +47,7 @@ namespace ITSupportBot.Dialogs
         {
             var options = stepContext.Options as dynamic;
             if (options != null && (options.GetType().GetProperty("Message") != null))
+
             {
                 return await stepContext.BeginDialogAsync(nameof(ParameterCollectionDialog), new { options?.Message }, cancellationToken);
             }
@@ -59,9 +60,6 @@ namespace ITSupportBot.Dialogs
 
         private async Task<DialogTurnResult> FurtherIndentStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-
-            await stepContext.Context.SendActivityAsync(MessageFactory.Text(" "), cancellationToken);
-
             return Dialog.EndOfTurn; 
         }
 
@@ -70,7 +68,11 @@ namespace ITSupportBot.Dialogs
             // Retrieve the user query (response from the previous step)
             string userMessage = (string)stepContext.Result;
 
-            var indent = await _externalServiceHelper.IndentHandlingAsync(userMessage);
+            var card = stepContext.Context.Activity.Value;
+
+            string inputToAIService = card != null ? card.ToString() : userMessage;
+
+            var indent = await _externalServiceHelper.IndentHandlingAsync(inputToAIService);
 
             var jsonObject = JObject.Parse(indent);
 
@@ -79,16 +81,9 @@ namespace ITSupportBot.Dialogs
 
             if (responseValue == "YES")
             {
-                var adaptiveCard = File.ReadAllText("Cards/GreetingCard.json");
+                var adaptiveCard = _AdaptiveCardHelper.CreateAdaptiveCardAttachment("GreetingCard.json", null);
 
-                // Send the Adaptive Card to the user
-                var response = new Attachment
-                {
-                    ContentType = "application/vnd.microsoft.card.adaptive",
-                    Content = JsonConvert.DeserializeObject(adaptiveCard)
-                };
-
-                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(response), cancellationToken);
+                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(adaptiveCard), cancellationToken);
                 return Dialog.EndOfTurn; // Wait for the user's response to the card actions
 
             };
